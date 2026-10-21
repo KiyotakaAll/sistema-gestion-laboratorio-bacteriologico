@@ -1,0 +1,10 @@
+node_modules
+dist
+.env
+*.log
+.DS_Store
+
+# Archivos generados
+*.tsbuildinfo
+# Archivo accidental
+/frontend/-la | grep -E 'env|vite|package'

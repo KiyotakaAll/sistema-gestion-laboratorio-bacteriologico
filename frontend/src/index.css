@@ -1,0 +1,38 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Aplicación exclusiva para escritorio/portátil: ancho mínimo fijo, sin adaptación móvil. */
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    min-width: 1280px;
+    @apply bg-lamina font-sans text-sm text-slate-800 antialiased;
+  }
+
+  /* Foco visible para uso con teclado (lector de código de barras + Tab). */
+  :focus-visible {
+    outline: 2px solid theme('colors.violeta.500');
+    outline-offset: 1px;
+  }
+
+  input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible {
+    outline-offset: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
