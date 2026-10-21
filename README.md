@@ -1,86 +1,198 @@
-# Sistema Web de Gestión para Laboratorio Bacteriológico
+# Sistema Web para la Gestión de un Laboratorio Bacteriológico
 
-Base de Datos I. Inspirado en ATHENEA LIS. MySQL + Node/TypeScript/Express/Prisma + React/Vite/Tailwind (solo escritorio).
+> Proyecto universitario de **Base de Datos I** · Aplicación web full stack · En desarrollo
 
-## Estado del proyecto
+## ¿De qué trata el proyecto?
 
-| Parte | Estado | Verificado |
-|---|---|---|
-| `database/schema.sql` | Completo | Cargado en MySQL 8.0.46; 16 pruebas de restricciones pasan |
-| Backend (`backend/`) | Completo | `tsc --strict` sin errores; 30 casos HTTP de auth, RBAC y validación pasan |
-| Frontend (`frontend/`) | Completo | `tsc --strict` sin errores; build de producción OK; 15 pruebas de interfaz por rol pasan |
+Este proyecto nació como parte de una asignatura universitaria y busca facilitar la organización de algunos procesos de un laboratorio bacteriológico. La idea es que el personal pueda gestionar pacientes, solicitudes de exámenes, muestras y resultados desde una misma aplicación, en lugar de llevar cada parte por separado.
 
-**Lo que NO se pudo verificar** (el entorno donde se generó no tiene acceso al motor de Prisma ni a un navegador):
+Tomamos como referencia el funcionamiento general de un sistema de información de laboratorio (LIS), con inspiración en ATHENEA LIS, y lo adaptamos al alcance de nuestro proyecto académico. Además de construir la interfaz, nos interesaba aplicar lo aprendido sobre **bases de datos relacionales, reglas de integridad, desarrollo web y control de acceso por roles**.
 
-1. Las consultas reales de Prisma contra MySQL: los flujos de punta a punta (registrar muestra, cargar resultado, validar). Su lógica está escrita y tipada, pero no ejecutada.
-2. El aspecto visual real en un navegador. Las pruebas de interfaz comprueban comportamiento (qué se muestra, qué se envía al API), no el diseño.
+No es un sistema comercial ni está listo para trabajar con información clínica real. Es un prototipo que seguimos probando y mejorando.
 
-Siga los pasos de abajo y reporte cualquier error o detalle visual a corregir.
+## ¿Qué permite hacer?
 
-## Estructura
+- Registrar y consultar pacientes.
+- Crear solicitudes de análisis y asociarlas con muestras.
+- Registrar y recibir muestras, identificándolas mediante un código de barras.
+- Llevar una muestra a procesamiento y registrar hallazgos bacteriológicos.
+- Revisar y validar resultados según los permisos del usuario.
+- Consultar la trazabilidad de las acciones realizadas durante el proceso.
+- Iniciar sesión con distintos roles y restringir operaciones según los permisos definidos.
 
+### Roles del sistema
+
+| Rol | Responsabilidad principal |
+| --- | --- |
+| **Recepcionista** | Admisión de pacientes, solicitudes y recepción de muestras. |
+| **Bacteriólogo** | Procesamiento de muestras y registro de hallazgos. |
+| **Validador** | Revisión y validación de resultados. |
+| **Administrador** | Consultas y operaciones administrativas permitidas; no firma resultados. |
+
+Una de las reglas del proyecto es la **doble firma**: quien registra un resultado no puede validarlo por sí mismo.
+
+## Tecnologías
+
+| Componente | Herramientas |
+| --- | --- |
+| **Frontend** | React, TypeScript, Vite, Tailwind CSS |
+| **Backend** | Node.js, Express, TypeScript |
+| **Base de datos** | MySQL 8, SQL |
+| **Acceso a datos** | Prisma ORM |
+| **Autenticación y validación** | JWT, bcrypt, Zod |
+| **Pruebas** | Vitest, Testing Library y pruebas HTTP del backend |
+
+## Capturas de pantalla
+
+Todavía estamos preparando capturas de las pantallas principales. Las agregaremos usando **pacientes y resultados ficticios**.
+
+## Organización del repositorio
+
+```text
+.
+├── backend/
+│   ├── prisma/            # Modelo de Prisma y datos de prueba
+│   ├── src/               # API, servicios, rutas y validaciones
+│   └── tests/             # Pruebas HTTP
+├── frontend/
+│   └── src/               # Pantallas, componentes y pruebas
+├── database/
+│   ├── schema.sql         # Esquema y datos iniciales de la base de datos
+│   └── tests/             # Verificación de restricciones SQL
+└── README.md
 ```
-database/
-  schema.sql                       DDL completo + datos semilla (roles, exámenes)
-  tests/verificar_restricciones.sh Prueba CHECK / UNIQUE / doble firma contra su MySQL
-backend/
-  prisma/ schema.prisma, seed.ts
-  src/ config · controllers · services · middlewares · routes · validators · types · utils
-  tests/smoke.ts                   Auth, RBAC y validación (no requiere datos)
-frontend/
-  src/ components (UI, admision, muestras, resultados) · pages · context · services · hooks · types · utils
-  src/__tests__/flujos.test.tsx    Pruebas de interfaz por rol (API simulado)
-```
 
-## Puesta en marcha (Linux / CachyOS)
+## Cómo ejecutarlo en tu computador
 
-Requisitos: Node.js 20+ y **MySQL 8.0.16 o superior** (las restricciones CHECK no se aplican en versiones anteriores).
-MariaDB no está verificada con este esquema.
+Esta guía está pensada para un **entorno local de desarrollo**, no para producción.
 
-Opción A, MySQL con Docker (la más simple):
+### Requisitos
+
+- Node.js 20 o superior y npm.
+- MySQL 8.0.16 o superior (se ha trabajado con MySQL 8.4 en Docker).
+- Git.
+- Docker, si prefieres ejecutar MySQL en un contenedor.
+
+### 1. Clonar el repositorio
+
 ```bash
-docker run -d --name lab-mysql -e MYSQL_ROOT_PASSWORD=password -p 3306:3306 mysql:8.0
+git clone https://github.com/KiyotakaAll/sistema-gestion-laboratorio-bacteriologico.git
+cd sistema-gestion-laboratorio-bacteriologico
 ```
-Opción B, MySQL instalado en el sistema: instale el paquete `mysql` de los repositorios (en Arch/CachyOS el paquete `mariadb` es el predeterminado, no lo use), inicialice el directorio de datos e inicie el servicio.
+
+### 2. Preparar MySQL
+
+Crea una base de datos de **pruebas** utilizando el archivo `database/schema.sql`. Este archivo contiene instrucciones que pueden eliminar y volver a crear tablas: **no lo ejecutes sobre una base de datos que quieras conservar**.
+
+Si ya tienes MySQL 8 funcionando, puedes usar esa instalación. Si utilizas Docker, una alternativa es ejecutar MySQL 8.4 en un puerto local libre, por ejemplo:
 
 ```bash
-# 1) Crear el esquema
-mysql -uroot -p < database/schema.sql
+docker run -d --name lab-mysql84 \
+  -e MYSQL_ROOT_PASSWORD=CAMBIA_ESTA_CLAVE \
+  -p 127.0.0.1:3307:3306 \
+  -v lab-mysql84-data:/var/lib/mysql \
+  mysql:8.4
+```
 
-# 2) Backend  (terminal 1)
+Después, carga el esquema **solo en una instancia de pruebas nueva**, ajustando el usuario, el puerto y la contraseña a tu entorno:
+
+```bash
+mysql -h 127.0.0.1 -P 3307 -u root -p < database/schema.sql
+```
+
+> Si usas el puerto predeterminado de MySQL, cambia `3307` por `3306`. En CachyOS puede existir una instalación local de MariaDB; este proyecto se ha probado con **MySQL**, no con MariaDB.
+
+### 3. Configurar y ejecutar el backend
+
+```bash
 cd backend
-cp .env.example .env          # ajuste DATABASE_URL y JWT_SECRET (openssl rand -hex 32)
-npm install
-npm run prisma:generate
-npm run typecheck
-npm run seed                  # crea 4 usuarios demo (clave: Lab2026*)
-npm run test:smoke            # opcional: 30 verificaciones HTTP
-npm run dev                   # http://localhost:3000/api/health
-
-# 3) Frontend  (terminal 2)
-cd frontend
-npm install
-npm test                      # opcional: 15 pruebas de interfaz
-npm run dev                   # http://localhost:5173  (Vite hace proxy de /api al backend)
-
-# 4) Verificar restricciones de la BD (opcional; BORRA datos de prueba)
-./database/tests/verificar_restricciones.sh root
+npm ci
+cp .env.example .env
 ```
 
-Usuarios demo: `admin`, `recepcion`, `bacteriologo`, `validador` (clave `Lab2026*`, cámbiela fuera de clases).
+Edita `backend/.env` con tu propia conexión MySQL y un secreto JWT. Puedes generar el secreto con:
 
-## Recorrido sugerido para probar el flujo completo
+```bash
+openssl rand -hex 32
+```
 
-1. Entre como `recepcion`: **Admisión de pacientes**, registre un paciente y cree una solicitud (el sistema ofrece registrar la muestra).
-2. **Recepción de muestras**: registre la muestra con sus exámenes (se genera el código de barras), ábrala y pulse *Receptar*.
-3. Entre como `bacteriologo`: en **Recepción de muestras** abra la muestra e *Iniciar procesamiento*; luego en **Worklist** cargue Gram, colonias, bacteria y antibiograma S/I/R.
-4. Entre como `validador`: en **Validación de resultados** revise y firme. Si intenta validar con `bacteriologo`, el sistema lo impide (doble firma).
-5. En el detalle de la muestra, revise la **Trazabilidad** de todos los eventos.
+No subas el archivo `.env` al repositorio.
 
-## Flujo del laboratorio y roles
+Luego ejecuta:
 
-`RECEPCIONISTA` admite pacientes, crea solicitudes y registra/recepta muestras. `BACTERIOLOGO` inicia el procesamiento y carga hallazgos. `VALIDADOR` firma el resultado. `ADMINISTRADOR` consulta y registra, pero no tiene permiso para firmar. Quien registró un resultado no puede validarlo (lo exige el servicio y la BD con `ck_resultados_doble_firma`).
+```bash
+npm run prisma:generate
+npm run seed
+npm run dev
+```
 
-## API principal
+La API estará disponible en `http://localhost:3000` y su comprobación básica en `http://localhost:3000/api/health`.
 
-`POST /api/auth/login` · `GET /api/auth/me` · `/api/pacientes` · `/api/solicitudes` · `/api/examenes` · `/api/muestras` (+ `PATCH /:id/receptar|procesar|rechazar`, `GET /:id/trazabilidad`, `GET /codigo/:codigoBarras`) · `/api/resultados` (+ `GET /worklist`, `PATCH /:id/validar`).
+### 4. Configurar y ejecutar el frontend
+
+Abre otra terminal desde la raíz del proyecto:
+
+```bash
+cd frontend
+npm ci
+npm run dev
+```
+
+Abre `http://localhost:5173` en el navegador. Durante el desarrollo, Vite redirige las solicitudes `/api` al backend.
+
+> El diseño está orientado principalmente a pantallas de escritorio.
+
+### 5. Usuarios de demostración
+
+Al ejecutar el *seed* se crean cuentas para los roles `admin`, `recepcion`, `bacteriologo` y `validador`. Sus credenciales de prueba están definidas en el código de inicialización del proyecto. **Úsalas solo con datos ficticios y en un entorno local**; no deben utilizarse en una instalación pública.
+
+## Recorrido de prueba sugerido
+
+1. Inicia sesión como **recepcionista** y registra un paciente ficticio y una solicitud.
+2. Registra la muestra asociada, consulta su código y márcala como recibida.
+3. Ingresa como **bacteriólogo**, inicia el procesamiento y registra los hallazgos del análisis.
+4. Ingresa como **validador** y revisa el resultado antes de validarlo.
+5. Consulta la **trazabilidad** para observar los eventos registrados.
+
+Este recorrido principal se probó localmente con la aplicación y MySQL. No significa que todas las funcionalidades estén verificadas.
+
+## Pruebas y estado actual
+
+- Se ejecutaron satisfactoriamente las pruebas de interfaz disponibles (**15 pruebas**).
+- El backend pasó comprobaciones de tipos y compilación en el entorno local.
+- Se comprobó manualmente el flujo principal de pacientes, solicitudes, muestras, resultados y validación, incluyendo la persistencia y auditoría en MySQL.
+- El registro completo del antibiograma todavía requiere pruebas adicionales.
+- Quedan por revisar algunos aspectos de configuración de TypeScript del frontend, dependencias y seguridad antes de pensar en un despliegue público.
+
+Para ejecutar las pruebas de interfaz:
+
+```bash
+cd frontend
+npm test
+```
+
+En algunos entornos de Node.js puede ser necesario utilizar:
+
+```bash
+env NODE_OPTIONS='--no-experimental-webstorage' npm test
+```
+
+El backend también incluye `npm run test:smoke` para comprobaciones HTTP. Las pruebas de restricciones de `database/tests/` pueden **vaciar tablas**, así que deben ejecutarse únicamente en una base de datos desechable.
+
+## Próximas mejoras
+
+- Ampliar las pruebas de los resultados y el antibiograma.
+- Pulir detalles de la interfaz y su adaptación a distintos tamaños de pantalla.
+- Revisar dependencias y configuración antes de desplegar la aplicación.
+- Completar la documentación y añadir capturas del sistema.
+
+## Autores
+
+Proyecto desarrollado con fines académicos.
+
+- [KiyotakaAll](https://github.com/KiyotakaAll)
+- Compañero de desarrollo: por agregar.
+
+---
+
+**Nota:** este repositorio es un ejercicio académico. No está destinado a la atención clínica ni al almacenamiento de información real de pacientes.
