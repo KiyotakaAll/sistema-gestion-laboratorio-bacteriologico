@@ -21,12 +21,12 @@ export const listar = asyncHandler(async (req, res) => {
 
 export const obtener = asyncHandler(async (req, res) => {
   const { id } = idParamSchema.parse(req.params);
-  res.json({ data: await muestraService.obtenerMuestraPorId(id) });
+  res.json({ data: await muestraService.obtenerMuestraPorId(id, req.user!.rol) });
 });
 
 export const obtenerPorCodigoBarras = asyncHandler(async (req, res) => {
   const { codigoBarras } = codigoBarrasParamSchema.parse(req.params);
-  res.json({ data: await muestraService.obtenerMuestraPorCodigoBarras(codigoBarras) });
+  res.json({ data: await muestraService.obtenerMuestraPorCodigoBarras(codigoBarras, req.user!.rol) });
 });
 
 export const trazabilidad = asyncHandler(async (req, res) => {
@@ -36,22 +36,22 @@ export const trazabilidad = asyncHandler(async (req, res) => {
 
 export const registrar = asyncHandler(async (req, res) => {
   const input = registrarMuestraSchema.parse(req.body);
-  const muestra = await muestraService.registrarMuestra(input, auditContext(req));
+  const muestra = await muestraService.registrarMuestra(input, auditContext(req), req.user!.rol);
   res.status(201).json({ data: muestra });
 });
 
 export const receptar = asyncHandler(async (req, res) => {
   const { id } = idParamSchema.parse(req.params);
-  res.json({ data: await muestraService.receptarMuestra(id, auditContext(req)) });
+  res.json({ data: await muestraService.receptarMuestra(id, auditContext(req), req.user!.rol) });
 });
 
 export const procesar = asyncHandler(async (req, res) => {
   const { id } = idParamSchema.parse(req.params);
-  res.json({ data: await muestraService.iniciarProcesamiento(id, auditContext(req)) });
+  res.json({ data: await muestraService.iniciarProcesamiento(id, auditContext(req), req.user!.rol) });
 });
 
 export const rechazar = asyncHandler(async (req, res) => {
   const { id } = idParamSchema.parse(req.params);
   const { motivoRechazo } = rechazarMuestraSchema.parse(req.body);
-  res.json({ data: await muestraService.rechazarMuestra(id, motivoRechazo, auditContext(req)) });
+  res.json({ data: await muestraService.rechazarMuestra(id, motivoRechazo, auditContext(req), req.user!.rol) });
 });

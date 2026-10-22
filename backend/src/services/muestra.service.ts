@@ -1,6 +1,7 @@
 import { randomInt } from 'node:crypto';
 import { EstadoMuestra, Prisma } from '@prisma/client';
 import { prisma } from '../config/prisma';
+import type { RolNombre } from '../types/auth';
 import type { AuditContext, EventoTrazabilidad, Paginado } from '../types/dto';
 import { AppError } from '../types/errors';
 import type {
@@ -22,17 +23,22 @@ const muestraListaInclude = {
   examenes: { select: { id: true, examen: { select: { id: true, codigo: true, nombre: true } } } },
 } satisfies Prisma.MuestraInclude;
 
-/** Datos completos para el modal Master-Detail. */
-const muestraDetalleInclude = {
-  solicitud: { include: { paciente: true } },
-  recepcionadoPor: { select: { id: true, username: true, nombreCompleto: true } },
-  examenes: {
-    include: {
-      examen: true,
-      resultado: { include: { antibiograma: { orderBy: { antibiotico: 'asc' } } } },
+/** Solo los roles clínicos autorizados consultan la relación de resultados. */
+function muestraDetalleInclude(rol: RolNombre) {
+  const puedeVerResultados = ['BACTERIOLOGO', 'VALIDADOR', 'ADMINISTRADOR'].includes(rol);
+  return {
+    solicitud: { include: { paciente: true } },
+    recepcionadoPor: { select: { id: true, username: true, nombreCompleto: true } },
+    examenes: {
+      include: {
+        examen: true,
+        ...(puedeVerResultados
+          ? { resultado: { include: { antibiograma: { orderBy: { antibiotico: 'asc' as const } } } } }
+          : {}),
+      },
     },
-  },
-} satisfies Prisma.MuestraInclude;
+  } satisfies Prisma.MuestraInclude;
+}
 
 /**
  * Máquina de estados de la muestra:
@@ -57,7 +63,7 @@ function generarCodigoBarras(): string {
   return `M${fecha}-${sufijo}`;
 }
 
-export async function registrarMuestra(input: RegistrarMuestraInput, ctx: AuditContext) {
+export async function registrarMuestra(input: RegistrarMuestraInput, ctx: AuditContext, rol: RolNombre) {
   return prisma.$transaction(async (tx) => {
     const solicitud = await tx.solicitud.findUnique({
       where: { id: input.solicitudId },
@@ -94,7 +100,7 @@ export async function registrarMuestra(input: RegistrarMuestraInput, ctx: AuditC
         fechaToma: input.fechaToma,
         examenes: { create: input.examenIds.map((examenId) => ({ examenId })) },
       },
-      include: muestraDetalleInclude,
+      include: muestraDetalleInclude(rol),
     });
 
     await registrarLog(tx, {
@@ -147,8 +153,8 @@ export async function listarMuestras(filtros: ListarMuestrasQuery) {
   return respuesta;
 }
 
-export async function obtenerMuestraPorId(id: number) {
-  const muestra = await prisma.muestra.findUnique({ where: { id }, include: muestraDetalleInclude });
+export async function obtenerMuestraPorId(id: number, rol: RolNombre) {
+  const muestra = await prisma.muestra.findUnique({ where: { id }, include: muestraDetalleInclude(rol) });
   if (!muestra) {
     throw new AppError(404, 'La muestra no existe.', 'MUESTRA_NO_ENCONTRADA');
   }
@@ -156,10 +162,10 @@ export async function obtenerMuestraPorId(id: number) {
 }
 
 /** Búsqueda por lectura de código de barras (índice UNIQUE → O(log n)). */
-export async function obtenerMuestraPorCodigoBarras(codigoBarras: string) {
+export async function obtenerMuestraPorCodigoBarras(codigoBarras: string, rol: RolNombre) {
   const muestra = await prisma.muestra.findUnique({
     where: { codigoBarras },
-    include: muestraDetalleInclude,
+    include: muestraDetalleInclude(rol),
   });
   if (!muestra) {
     throw new AppError(404, 'No existe una muestra con ese código de barras.', 'MUESTRA_NO_ENCONTRADA');
@@ -181,6 +187,7 @@ interface Transicion {
   hasta: EstadoMuestra;
   accion: string;
   ctx: AuditContext;
+  rol: RolNombre;
   /** Campos adicionales a escribir; recibe la fecha de recepción actual por si ya existe. */
   datos: (actual: { fechaRecepcion: Date | null }) => Prisma.MuestraUncheckedUpdateManyInput;
   detalle?: Prisma.InputJsonValue;
@@ -193,7 +200,7 @@ interface Transicion {
  *     entre el paso 1 y el 2, count = 0 y se aborta (bloqueo optimista).
  *  3. Registra la auditoría en la misma transacción.
  */
-async function transicionar({ id, desde, hasta, accion, ctx, datos, detalle }: Transicion) {
+async function transicionar({ id, desde, hasta, accion, ctx, rol, datos, detalle }: Transicion) {
   return prisma.$transaction(async (tx) => {
     const actual = await tx.muestra.findUnique({
       where: { id },
@@ -234,14 +241,15 @@ async function transicionar({ id, desde, hasta, accion, ctx, datos, detalle }: T
       ip: ctx.ip,
     });
 
-    return tx.muestra.findUniqueOrThrow({ where: { id }, include: muestraDetalleInclude });
+    return tx.muestra.findUniqueOrThrow({ where: { id }, include: muestraDetalleInclude(rol) });
   });
 }
 
-export function receptarMuestra(id: number, ctx: AuditContext) {
+export function receptarMuestra(id: number, ctx: AuditContext, rol: RolNombre) {
   return transicionar({
     id,
     ctx,
+    rol,
     desde: [EstadoMuestra.REGISTRADA],
     hasta: EstadoMuestra.RECEPTADA,
     accion: 'RECEPTAR',
@@ -249,10 +257,11 @@ export function receptarMuestra(id: number, ctx: AuditContext) {
   });
 }
 
-export function iniciarProcesamiento(id: number, ctx: AuditContext) {
+export function iniciarProcesamiento(id: number, ctx: AuditContext, rol: RolNombre) {
   return transicionar({
     id,
     ctx,
+    rol,
     desde: [EstadoMuestra.RECEPTADA],
     hasta: EstadoMuestra.EN_PROCESAMIENTO,
     accion: 'INICIAR_PROCESAMIENTO',
@@ -265,10 +274,11 @@ export function iniciarProcesamiento(id: number, ctx: AuditContext) {
  * ocurre en el mesón de recepción: se completan fecha y usuario de recepción
  * para cumplir ck_muestras_recepcion (estado ≠ REGISTRADA ⇒ fecha_recepcion).
  */
-export function rechazarMuestra(id: number, motivoRechazo: string, ctx: AuditContext) {
+export function rechazarMuestra(id: number, motivoRechazo: string, ctx: AuditContext, rol: RolNombre) {
   return transicionar({
     id,
     ctx,
+    rol,
     desde: [EstadoMuestra.REGISTRADA, EstadoMuestra.RECEPTADA],
     hasta: EstadoMuestra.RECHAZADA,
     accion: 'RECHAZAR',

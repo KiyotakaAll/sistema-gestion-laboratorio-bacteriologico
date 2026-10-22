@@ -160,7 +160,8 @@ export interface MuestraExamenBase {
 export interface MuestraDetalle extends MuestraBase {
   solicitud: SolicitudBase & { paciente: Paciente };
   recepcionadoPor: UsuarioResumen | null;
-  examenes: (MuestraExamenBase & { examen: Examen; resultado: ResultadoConAntibiograma | null })[];
+  // Ausente: lectura restringida por permisos. null: todavía no existe resultado.
+  examenes: (MuestraExamenBase & { examen: Examen; resultado?: ResultadoConAntibiograma | null })[];
 }
 
 export interface SolicitudDetalle extends SolicitudBase {
