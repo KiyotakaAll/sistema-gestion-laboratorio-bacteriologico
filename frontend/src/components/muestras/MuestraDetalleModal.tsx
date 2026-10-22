@@ -55,20 +55,28 @@ export function MuestraDetalleModal({ muestraId, onCerrar, onCambio }: Props) {
   const [motivo, setMotivo] = useState('');
 
   const m = muestra.datos;
+  const puedeVerResultados = tieneRol('BACTERIOLOGO', 'VALIDADOR', 'ADMINISTRADOR');
 
   const columnasExamenes = useMemo<Column<ExamenFila>[]>(
-    () => [
-      { id: 'codigo', header: 'Código', accessor: (e) => e.examen.codigo, width: '8rem' },
-      { id: 'examen', header: 'Examen', accessor: (e) => e.examen.nombre },
-      {
-        id: 'resultado',
-        header: 'Resultado',
-        accessor: (e) => (e.resultado ? ETIQUETA_ESTADO_RESULTADO[e.resultado.estado] : 'Sin resultado'),
-        cell: (e) => (e.resultado ? <EstadoResultadoBadge estado={e.resultado.estado} /> : <span className="text-slate-500">Sin resultado</span>),
-      },
-      { id: 'bacteria', header: 'Bacteria aislada', accessor: (e) => e.resultado?.bacteriaAislada },
-    ],
-    [],
+    () => {
+      const columnas: Column<ExamenFila>[] = [
+        { id: 'codigo', header: 'Código', accessor: (e) => e.examen.codigo, width: '8rem' },
+        { id: 'examen', header: 'Examen', accessor: (e) => e.examen.nombre },
+      ];
+      if (puedeVerResultados) {
+        columnas.push(
+          {
+            id: 'resultado',
+            header: 'Resultado',
+            accessor: (e) => (e.resultado ? ETIQUETA_ESTADO_RESULTADO[e.resultado.estado] : e.resultado === null ? 'Sin resultado' : ''),
+            cell: (e) => (e.resultado ? <EstadoResultadoBadge estado={e.resultado.estado} /> : e.resultado === null ? <span className="text-slate-500">Sin resultado</span> : null),
+          },
+          { id: 'bacteria', header: 'Bacteria aislada', accessor: (e) => e.resultado?.bacteriaAislada },
+        );
+      }
+      return columnas;
+    },
+    [puedeVerResultados],
   );
 
   async function ejecutar(accion: () => Promise<unknown>, mensajeExito: string) {

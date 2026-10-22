@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import App from '../App';
+import { MuestraDetalleModal } from '../components/muestras/MuestraDetalleModal';
 import { AuthProvider } from '../context/AuthContext';
 import { ToastProvider } from '../context/ToastContext';
 import {
@@ -219,6 +220,46 @@ describe('Validación con doble firma', () => {
 });
 
 describe('Recepción de muestras', () => {
+  for (const rol of ['RECEPCIONISTA', 'BACTERIOLOGO', 'VALIDADOR', 'ADMINISTRADOR'] as const) {
+    for (const contenido of ['ausente', 'vacio', 'clinico'] as const) {
+      it(`${rol}: detalle con resultado ${contenido} respeta las columnas clínicas`, async () => {
+        localStorage.setItem('lab_token', 'token-de-prueba');
+        vi.mocked(authApi.perfil).mockResolvedValue({ id: 9, username: 'prueba', nombreCompleto: 'Prueba', rol });
+        vi.mocked(muestrasApi.obtener).mockResolvedValue({
+          ...muestra(ana), recepcionadoPor: null,
+          examenes: [{ id: 5, muestraId: 3, examenId: 1, createdAt: FECHA, examen,
+            ...(contenido === 'ausente' ? {} : { resultado: contenido === 'vacio' ? null : resultado(ana, 3) }),
+          }],
+        } as never);
+        vi.mocked(muestrasApi.trazabilidad).mockResolvedValue([]);
+        render(
+          <MemoryRouter>
+            <ToastProvider><AuthProvider>
+              <MuestraDetalleModal muestraId={3} onCerrar={vi.fn()} onCambio={vi.fn()} />
+            </AuthProvider></ToastProvider>
+          </MemoryRouter>,
+        );
+        expect(await screen.findByRole('columnheader', { name: 'Examen' })).toBeInTheDocument();
+        expect(screen.getByText('Pérez, Ana')).toBeInTheDocument();
+        expect(screen.getByText('Urocultivo')).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: 'Trazabilidad' })).toBeInTheDocument();
+        if (rol === 'RECEPCIONISTA') {
+          // También oculta datos clínicos si una respuesta antigua aún los contiene.
+          expect(screen.queryByRole('columnheader', { name: 'Resultado' })).not.toBeInTheDocument();
+          expect(screen.queryByRole('columnheader', { name: 'Bacteria aislada' })).not.toBeInTheDocument();
+          expect(screen.queryByText('Escherichia coli')).not.toBeInTheDocument();
+          expect(screen.queryByText('Sin resultado')).not.toBeInTheDocument();
+        } else {
+          expect(screen.getByRole('columnheader', { name: 'Resultado' })).toBeInTheDocument();
+          expect(screen.getByRole('columnheader', { name: 'Bacteria aislada' })).toBeInTheDocument();
+          if (contenido === 'vacio') expect(screen.getByText('Sin resultado')).toBeInTheDocument();
+          else expect(screen.queryByText('Sin resultado')).not.toBeInTheDocument();
+          if (contenido === 'clinico') expect(screen.getByText('Escherichia coli')).toBeInTheDocument();
+        }
+      });
+    }
+  }
+
   it('el bacteriólogo ve "Iniciar procesamiento" en una muestra receptada y no puede receptar', async () => {
     const m = { ...muestra(ana), estado: 'RECEPTADA' as const };
     vi.mocked(muestrasApi.listar).mockResolvedValue(paginado([{ ...m, examenes: [{ id: 5, examen: { id: 1, codigo: 'URO-CUL', nombre: 'Urocultivo' } }] }]) as never);

@@ -15,7 +15,8 @@
     "prisma:generate": "prisma generate",
     "prisma:pull": "prisma db pull",
     "seed": "tsx prisma/seed.ts",
-    "test:smoke": "tsx tests/smoke.ts"
+    "test:smoke": "tsx tests/smoke.ts",
+    "test:permisos-muestras": "node --require tsx/cjs tests/muestras.permisos.test.cjs"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
