@@ -11,7 +11,8 @@ import { formatFechaHora, limpiarParams, nombrePaciente } from '../utils/format'
 
 export default function ValidacionAthenea() {
   const { usuario, tieneRol } = useAuth();
-  const [estado, setEstado] = useState<EstadoResultado | ''>('PENDIENTE_VALIDACION');
+  const puedeValidar = tieneRol('VALIDADOR');
+  const [estado, setEstado] = useState<EstadoResultado | ''>(() => tieneRol('BACTERIOLOGO') ? '' : 'PENDIENTE_VALIDACION');
   const [pagina, setPagina] = useState(1);
   const [seleccionado, setSeleccionado] = useState<ResultadoDetalle | null>(null);
 
@@ -36,6 +37,17 @@ export default function ValidacionAthenea() {
 
   return (
     <>
+      <div className="mb-3">
+        <h2 className="font-serif text-lg font-semibold text-slate-900">
+          {puedeValidar ? 'Validación de resultados' : 'Consulta de resultados'}
+        </h2>
+        <p className="text-sm text-slate-600">
+          {puedeValidar
+            ? 'Revise los resultados y valide los registrados por otra persona.'
+            : 'Consulte los resultados registrados, incluidos los de muestras procesadas. Su rol tiene acceso de solo lectura en esta pantalla.'}
+        </p>
+        <p className="text-xs text-slate-500">La búsqueda de texto filtra únicamente la página actual.</p>
+      </div>
       <DataTable
         columnas={columnas}
         filas={datos?.data ?? []}
@@ -43,7 +55,7 @@ export default function ValidacionAthenea() {
         alHacerClic={setSeleccionado}
         cargando={cargando}
         error={error}
-        placeholderFiltro="Filtrar por paciente, examen o bacteria"
+        placeholderFiltro="Filtrar esta página por paciente, examen o bacteria"
         mensajeVacio={estado === 'PENDIENTE_VALIDACION' ? 'No hay resultados esperando validación.' : 'No hay resultados con ese estado.'}
         ordenInicial={{ columna: 'fecha', direccion: 'asc' }}
         paginacion={datos ? { page: datos.page, totalPages: datos.totalPages, total: datos.total, onCambiarPagina: setPagina } : undefined}
@@ -69,7 +81,7 @@ export default function ValidacionAthenea() {
           key={seleccionado.id}
           resultado={seleccionado}
           usuarioActualId={usuario.id}
-          puedeValidar={tieneRol('VALIDADOR')}
+          puedeValidar={puedeValidar}
           onCerrar={() => setSeleccionado(null)}
           onValidado={() => recargar()}
         />

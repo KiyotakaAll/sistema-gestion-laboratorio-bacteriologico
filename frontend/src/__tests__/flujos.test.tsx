@@ -107,7 +107,7 @@ describe('Acceso y roles', () => {
   it('el menú solo muestra las secciones del rol', async () => {
     entrar('/dashboard', 'VALIDADOR');
     const menu = await screen.findByRole('navigation', { name: 'Principal' });
-    expect(within(menu).getByText('Validación de resultados')).toBeInTheDocument();
+    expect(within(menu).getByRole('link', { name: 'Consulta y validación' })).toBeInTheDocument();
     expect(within(menu).queryByText('Admisión de pacientes')).not.toBeInTheDocument();
     expect(within(menu).queryByText('Worklist bacteriológico')).not.toBeInTheDocument();
   });
@@ -182,6 +182,83 @@ describe('Worklist: carga de resultado con antibiograma', () => {
     expect(await screen.findByText('Todavía no se cargó el resultado de este examen.')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Guardar resultado' })).not.toBeInTheDocument();
   });
+});
+
+describe('Consulta de resultados registrados', () => {
+  for (const rol of ['BACTERIOLOGO', 'VALIDADOR', 'ADMINISTRADOR'] as const) {
+    it(`${rol}: accede desde la ruta y el menú con el filtro inicial correspondiente`, async () => {
+      entrar('/validacion', rol);
+      const estadoInicial = rol === 'BACTERIOLOGO' ? '' : 'PENDIENTE_VALIDACION';
+      expect(await screen.findByRole('combobox', { name: 'Estado del resultado' })).toHaveValue(estadoInicial);
+      expect(screen.getByRole('heading', { level: 1, name: 'Consulta y validación de resultados' })).toBeInTheDocument();
+      expect(screen.getByRole('heading', {
+        level: 2, name: rol === 'VALIDADOR' ? 'Validación de resultados' : 'Consulta de resultados',
+      })).toBeInTheDocument();
+      const menu = screen.getByRole('navigation', { name: 'Principal' });
+      expect(within(menu).getByRole('link', { name: 'Consulta y validación' })).toHaveAttribute('href', '/validacion');
+      await waitFor(() => expect(resultadosApi.listar).toHaveBeenCalledWith({
+        ...(estadoInicial ? { estado: estadoInicial } : {}), page: 1, pageSize: 25,
+      }));
+      expect(resultadosApi.worklist).not.toHaveBeenCalled();
+    });
+  }
+
+  it('recepción no accede por URL ni ve el enlace en el menú', async () => {
+    entrar('/validacion', 'RECEPCIONISTA');
+    expect(await screen.findByText('Acceso restringido')).toBeInTheDocument();
+    const menu = screen.getByRole('navigation', { name: 'Principal' });
+    expect(within(menu).queryByRole('link', { name: 'Consulta y validación' })).not.toBeInTheDocument();
+    expect(resultadosApi.listar).not.toHaveBeenCalled();
+    expect(resultadosApi.obtener).not.toHaveBeenCalled();
+  });
+
+  it('el acceso desde la worklist abre la consulta sin ampliar la lista de procesamiento', async () => {
+    vi.mocked(resultadosApi.worklist).mockResolvedValue([]);
+    entrar('/worklist', 'BACTERIOLOGO');
+    const u = userEvent.setup();
+    const enlace = await screen.findByRole('link', { name: 'Consultar resultados registrados' });
+    expect(screen.getByText(/Esta lista corresponde a muestras en procesamiento/)).toBeInTheDocument();
+    expect(screen.getByRole('checkbox', { name: 'Solo exámenes sin resultado' })).toBeChecked();
+    await waitFor(() => expect(resultadosApi.worklist).toHaveBeenCalledWith(true));
+    await u.click(enlace);
+    expect(await screen.findByRole('heading', { level: 2, name: 'Consulta de resultados' })).toBeInTheDocument();
+    await waitFor(() => expect(resultadosApi.listar).toHaveBeenCalledWith({ page: 1, pageSize: 25 }));
+    expect(resultadosApi.worklist).toHaveBeenCalledTimes(1);
+  });
+
+  for (const rol of ['BACTERIOLOGO', 'ADMINISTRADOR'] as const) {
+    for (const estado of ['PENDIENTE_VALIDACION', 'VALIDADO'] as const) {
+      it(`${rol}: consulta ${estado} de una muestra PROCESADA sin acciones de escritura`, async () => {
+        const base = resultado(ana, 3);
+        const registrado = {
+          ...base,
+          estado,
+          muestraExamen: { ...base.muestraExamen, muestra: { ...base.muestraExamen.muestra, estado: 'PROCESADA' as const } },
+          ...(estado === 'VALIDADO' ? {
+            usuarioIdValida: 4, fechaValidacion: FECHA,
+            validadoPor: { id: 4, username: 'val', nombreCompleto: 'Dra. Ortiz' },
+          } : {}),
+        };
+        // La respuesta simulada se entrega al seleccionar el filtro que la contiene.
+        vi.mocked(resultadosApi.listar).mockImplementation(async (params) =>
+          paginado(!params.estado || params.estado === estado ? [registrado] : []));
+        entrar('/validacion', rol);
+        const u = userEvent.setup();
+        const filtro = await screen.findByRole('combobox', { name: 'Estado del resultado' });
+        await u.selectOptions(filtro, estado);
+        await waitFor(() => expect(resultadosApi.listar).toHaveBeenLastCalledWith({ estado, page: 1, pageSize: 25 }));
+        await u.click(await screen.findByText('Pérez, Ana'));
+        const detalle = await screen.findByRole('dialog');
+        expect(within(detalle).getByText('Bacilos Gram negativos')).toBeInTheDocument();
+        expect(within(detalle).getByText('Ciprofloxacino')).toBeInTheDocument();
+        expect(within(detalle).queryByRole('button', { name: /Validar resultado|Confirmar validación|Guardar resultado|Guardar corrección/ })).not.toBeInTheDocument();
+        expect(within(detalle).queryByRole('textbox')).not.toBeInTheDocument();
+        expect(resultadosApi.validar).not.toHaveBeenCalled();
+        expect(resultadosApi.registrar).not.toHaveBeenCalled();
+        expect(resultadosApi.actualizar).not.toHaveBeenCalled();
+      });
+    }
+  }
 });
 
 describe('Validación con doble firma', () => {
