@@ -116,13 +116,13 @@ export default function Login() {
           <span className="login-logo-icon">
           </span>
           <span>
-            
+
             <strong></strong>
           </span>
         </div>
 
         <div className="login-form-wrapper">
-
+          <div className="login-form-heading">
             <h2>Bienvenido de nuevo</h2>
             <p className="login-form-description">
               Ingrese sus credenciales para acceder al sistema.
@@ -131,7 +131,7 @@ export default function Login() {
 
           <form onSubmit={enviar} className="login-form" noValidate>
             {error && (
-              <div className="login-error" role="alert">
+              <div className="login-error">
                 <Alert>{error}</Alert>
               </div>
             )}
@@ -209,6 +209,7 @@ export default function Login() {
               Sus credenciales se procesan de forma segura.
             </p>
           </form>
+        </div>
 
         <footer className="login-content-footer">
           <span>Sistema de Gestión de Laboratorio Bacteriológico</span>

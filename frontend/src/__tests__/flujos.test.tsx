@@ -138,10 +138,8 @@ describe('Acceso y roles', () => {
     );
 
     expect(
-      await screen.findByText(
-        'Usuario o contraseña incorrectos.',
-      ),
-    ).toBeInTheDocument();
+      await screen.findByRole('alert'),
+    ).toHaveTextContent('Usuario o contraseña incorrectos.');
   });
 
   it('un bacteriólogo no puede entrar a Admisión', async () => {
@@ -174,20 +172,6 @@ describe('Acceso y roles', () => {
     ).not.toBeInTheDocument();
   });
 });
-
-
-  it('un bacteriólogo no puede entrar a Admisión', async () => {
-    entrar('/admision', 'BACTERIOLOGO');
-    expect(await screen.findByText('Acceso restringido')).toBeInTheDocument();
-  });
-
-  it('el menú solo muestra las secciones del rol', async () => {
-    entrar('/dashboard', 'VALIDADOR');
-    const menu = await screen.findByRole('navigation', { name: 'Principal' });
-    expect(within(menu).getByRole('link', { name: 'Consulta y validación' })).toBeInTheDocument();
-    expect(within(menu).queryByText('Admisión de pacientes')).not.toBeInTheDocument();
-    expect(within(menu).queryByText('Worklist bacteriológico')).not.toBeInTheDocument();
-  });
 
 
 describe('Admisión (Master-Detail)', () => {
