@@ -38,10 +38,10 @@ export const NAVEGACION: ItemNavegacion[] = [
   },
   {
     ruta: '/validacion',
-    etiqueta: 'Validación de resultados',
-    titulo: 'Validación formal de resultados',
+    etiqueta: 'Consulta y validación',
+    titulo: 'Consulta y validación de resultados',
     icono: FileCheck2,
-    roles: ['ADMINISTRADOR', 'VALIDADOR'],
+    roles: ['ADMINISTRADOR', 'BACTERIOLOGO', 'VALIDADOR'],
   },
 ];
 
