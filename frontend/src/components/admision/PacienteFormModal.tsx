@@ -79,7 +79,7 @@ export function PacienteFormModal({ paciente, onCerrar, onGuardado }: Props) {
         </>
       }
     >
-      <form id={ID_FORMULARIO} onSubmit={enviar} className="grid grid-cols-2 gap-3">
+      <form id={ID_FORMULARIO} onSubmit={enviar} className="grid grid-cols-2 gap-x-4 gap-y-3">
         {error && (
           <div className="col-span-2">
             <Alert detalles={detalles}>{error}</Alert>
