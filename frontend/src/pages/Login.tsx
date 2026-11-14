@@ -1,4 +1,12 @@
-import { Loader2 } from 'lucide-react';
+﻿import {
+  CheckCircle2,
+  LockKeyhole,
+  ArrowRight,
+  Eye,
+  EyeOff,
+  ShieldCheck,
+  Microscope,
+} from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { Alert } from '../components/UI/Alert';
@@ -9,20 +17,23 @@ import { mensajeDeError } from '../services/api';
 
 const ETAPAS = [
   'Admisión del paciente y solicitud médica',
-  'Recepción de la muestra con código de barras',
-  'Procesamiento y carga de hallazgos',
-  'Validación formal con doble firma',
+  'Recepción de la muestra e identificación',
+  'Procesamiento y registro de hallazgos',
+  'Validación y emisión de resultados',
 ];
 
 export default function Login() {
   const { usuario, iniciarSesion } = useAuth();
   const location = useLocation();
+
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [mostrarPassword, setMostrarPassword] = useState(false);
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const destino = (location.state as { from?: string } | null)?.from ?? '/dashboard';
+  const destino =
+    (location.state as { from?: string } | null)?.from ?? '/dashboard';
 
   if (usuario) {
     return <Navigate to={destino} replace />;
@@ -30,8 +41,14 @@ export default function Login() {
 
   async function enviar(evento: FormEvent<HTMLFormElement>) {
     evento.preventDefault();
+
+    if (!username.trim() || !password || enviando) {
+      return;
+    }
+
     setEnviando(true);
     setError(null);
+
     try {
       await iniciarSesion(username.trim(), password);
     } catch (e) {
@@ -41,52 +58,172 @@ export default function Login() {
   }
 
   return (
-    <div className="flex h-full">
-      <section className="flex w-[34rem] shrink-0 flex-col justify-between bg-violeta-950 px-12 py-14 text-violeta-100">
-        <div>
-          <h1 className="font-serif text-3xl font-semibold leading-9 text-white">Laboratorio Bacteriológico</h1>
-          <p className="mt-2 text-base text-violeta-300">Sistema de gestión de muestras y resultados</p>
-        </div>
-        <div>
-          <p className="mb-3 text-sm font-semibold text-violeta-200">Recorrido de una muestra</p>
-          <ol className="space-y-3 border-l border-violeta-700 pl-5">
-            {ETAPAS.map((etapa) => (
-              <li key={etapa} className="relative text-sm">
-                <span className="absolute -left-[1.6rem] top-1.5 h-2 w-2 rounded-full bg-violeta-300" aria-hidden />
-                {etapa}
-              </li>
-            ))}
-          </ol>
+    <main className="login-page">
+      <section className="login-brand" aria-label="Información del laboratorio">
+        <div className="login-brand-inner">
+          <a className="login-brand-logo" href="/" aria-label="Inicio del laboratorio">
+            <span className="login-logo-icon">
+              <Microscope size={25} strokeWidth={1.8} aria-hidden="true" />
+            </span>
+            <span className="login-brand-name">
+              Laboratorio
+              <strong>Bacteriológico</strong>
+            </span>
+          </a>
+
+          <div className="login-brand-message">
+            <span className="login-eyebrow">
+              CIENCIA · PRECISIÓN · CONFIANZA
+            </span>
+
+            <h1>
+              La precisión
+              <br />
+              comienza con
+              <br />
+              <span>cada muestra.</span>
+            </h1>
+
+            <p>
+              Plataforma de gestión de muestras, procesamiento microbiológico
+              y validación de resultados de laboratorio.
+            </p>
+
+            <div className="login-workflow">
+              <h2>El proceso del laboratorio</h2>
+
+              <ol>
+                {ETAPAS.map((etapa, index) => (
+                  <li key={etapa}>
+                    <span className="login-step-number">
+                      {String(index + 1).padStart(2, '0')}
+                    </span>
+                    <span>{etapa}</span>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          </div>
+
+          <div className="login-brand-footer">
+            <span>Acceso exclusivo para personal autorizado</span>
+          </div>
         </div>
       </section>
 
-      <section className="flex flex-1 items-center justify-center bg-lamina">
-        <form onSubmit={enviar} className="w-80 space-y-4" noValidate>
-          <div>
-            <h2 className="font-serif text-xl font-semibold text-violeta-900">Iniciar sesión</h2>
-            <p className="text-sm text-slate-600">Ingrese con su usuario del laboratorio.</p>
+      <section className="login-content">
+        <div className="login-mobile-brand">
+          <span className="login-logo-icon">
+          </span>
+          <span>
+            
+            <strong></strong>
+          </span>
+        </div>
+
+        <div className="login-form-wrapper">
+
+            <h2>Bienvenido de nuevo</h2>
+            <p className="login-form-description">
+              Ingrese sus credenciales para acceder al sistema.
+            </p>
           </div>
-          {error && <Alert>{error}</Alert>}
-          <Campo etiqueta="Usuario">
-            <Input value={username} onChange={(e) => setUsername(e.target.value)} autoComplete="username" autoFocus required />
-          </Campo>
-          <Campo etiqueta="Contraseña">
-            <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" required />
-          </Campo>
-          <Button type="submit" variante="primario" className="w-full" disabled={!username.trim() || !password} cargando={enviando}>
-            {enviando ? 'Verificando' : 'Iniciar sesión'}
-          </Button>
-        </form>
+
+          <form onSubmit={enviar} className="login-form" noValidate>
+            {error && (
+              <div className="login-error" role="alert">
+                <Alert>{error}</Alert>
+              </div>
+            )}
+
+            <Campo etiqueta="Usuario" className="login-field">
+              <Input
+                value={username}
+                onChange={(e) => {
+                  setUsername(e.target.value);
+                  if (error) setError(null);
+                }}
+                autoComplete="username"
+                autoFocus
+                autoCapitalize="none"
+                spellCheck={false}
+                placeholder="Ingrese su usuario"
+                required
+                disabled={enviando}
+                className="login-input"
+              />
+            </Campo>
+
+            <Campo etiqueta="Contraseña" className="login-field">
+              <div className="login-password-wrapper">
+                <Input
+                  type={mostrarPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    if (error) setError(null);
+                  }}
+                  autoComplete="current-password"
+                  placeholder="Ingrese su contraseña"
+                  required
+                  disabled={enviando}
+                  className="login-input login-password-input"
+                />
+
+                <button
+                  type="button"
+                  className="login-password-toggle"
+                  onClick={() => setMostrarPassword((actual) => !actual)}
+                  aria-label={
+                    mostrarPassword
+                      ? 'Ocultar contraseña'
+                      : 'Mostrar contraseña'
+                  }
+                  aria-pressed={mostrarPassword}
+                  disabled={enviando}
+                >
+                  {mostrarPassword ? (
+                    <EyeOff size={18} aria-hidden="true" />
+                  ) : (
+                    <Eye size={18} aria-hidden="true" />
+                  )}
+                </button>
+              </div>
+            </Campo>
+
+            <Button
+              type="submit"
+              variante="primario"
+              className="login-submit"
+              disabled={!username.trim() || !password || enviando}
+              cargando={enviando}
+            >
+              <span>{enviando ? 'Verificando acceso...' : 'Iniciar sesión'}</span>
+              {!enviando && (
+                <ArrowRight size={17} className="login-submit-arrow" aria-hidden="true" />
+              )}
+            </Button>
+
+            <p className="login-security-note">
+              <ShieldCheck size={16} aria-hidden="true" />
+              Sus credenciales se procesan de forma segura.
+            </p>
+          </form>
+
+        <footer className="login-content-footer">
+          <span>Sistema de Gestión de Laboratorio Bacteriológico</span>
+          <span>Plataforma institucional</span>
+        </footer>
       </section>
-    </div>
+    </main>
   );
 }
 
 export function PantallaCarga() {
   return (
-    <div className="flex h-full items-center justify-center text-slate-500">
-      <Loader2 className="mr-2 h-5 w-5 animate-spin" aria-hidden />
-      Cargando sesión
+    <div className="flex min-h-screen items-center justify-center gap-2 bg-lamina text-slate-500">
+      <span className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-violeta-200 border-t-violeta-700" />
+      <span>Cargando sesión...</span>
     </div>
   );
 }

@@ -74,30 +74,107 @@ beforeEach(() => {
   vi.mocked(resultadosApi.listar).mockResolvedValue(paginado([]) as never);
 });
 
+
 describe('Acceso y roles', () => {
   it('sin sesión redirige al login', async () => {
     render(
       <MemoryRouter initialEntries={['/dashboard']}>
-        <ToastProvider><AuthProvider><App /></AuthProvider></ToastProvider>
+        <ToastProvider>
+          <AuthProvider>
+            <App />
+          </AuthProvider>
+        </ToastProvider>
       </MemoryRouter>,
     );
-    expect(await screen.findByRole('heading', { name: 'Iniciar sesión' })).toBeInTheDocument();
+
+    expect(
+      await screen.findByRole('heading', {
+        name: 'Bienvenido de nuevo',
+      }),
+    ).toBeInTheDocument();
   });
 
   it('el login muestra el mensaje de error del backend', async () => {
-    const error = Object.assign(new Error('x'), { isAxiosError: true, response: { status: 401, data: { error: { message: 'Usuario o contraseña incorrectos.' } } } });
+    const error = Object.assign(new Error('x'), {
+      isAxiosError: true,
+      response: {
+        status: 401,
+        data: {
+          error: {
+            message: 'Usuario o contraseña incorrectos.',
+          },
+        },
+      },
+    });
+
     vi.mocked(authApi.login).mockRejectedValue(error);
+
     render(
       <MemoryRouter initialEntries={['/login']}>
-        <ToastProvider><AuthProvider><App /></AuthProvider></ToastProvider>
+        <ToastProvider>
+          <AuthProvider>
+            <App />
+          </AuthProvider>
+        </ToastProvider>
       </MemoryRouter>,
     );
+
     const u = userEvent.setup();
-    await u.type(await screen.findByLabelText('Usuario'), 'admin');
-    await u.type(screen.getByLabelText('Contraseña'), 'mala');
-    await u.click(screen.getByRole('button', { name: 'Iniciar sesión' }));
-    expect(await screen.findByRole('alert')).toHaveTextContent('Usuario o contraseña incorrectos.');
+
+    await u.type(
+      await screen.findByLabelText('Usuario'),
+      'admin',
+    );
+
+    await u.type(
+      screen.getByLabelText('Contraseña'),
+      'mala',
+    );
+
+    await u.click(
+      screen.getByRole('button', {
+        name: 'Iniciar sesión',
+      }),
+    );
+
+    expect(
+      await screen.findByText(
+        'Usuario o contraseña incorrectos.',
+      ),
+    ).toBeInTheDocument();
   });
+
+  it('un bacteriólogo no puede entrar a Admisión', async () => {
+    entrar('/admision', 'BACTERIOLOGO');
+
+    expect(
+      await screen.findByText('Acceso restringido'),
+    ).toBeInTheDocument();
+  });
+
+  it('el menú solo muestra las secciones del rol', async () => {
+    entrar('/dashboard', 'VALIDADOR');
+
+    const menu = await screen.findByRole('navigation', {
+      name: 'Principal',
+    });
+
+    expect(
+      within(menu).getByRole('link', {
+        name: 'Consulta y validación',
+      }),
+    ).toBeInTheDocument();
+
+    expect(
+      within(menu).queryByText('Admisión de pacientes'),
+    ).not.toBeInTheDocument();
+
+    expect(
+      within(menu).queryByText('Worklist bacteriológico'),
+    ).not.toBeInTheDocument();
+  });
+});
+
 
   it('un bacteriólogo no puede entrar a Admisión', async () => {
     entrar('/admision', 'BACTERIOLOGO');
@@ -111,7 +188,7 @@ describe('Acceso y roles', () => {
     expect(within(menu).queryByText('Admisión de pacientes')).not.toBeInTheDocument();
     expect(within(menu).queryByText('Worklist bacteriológico')).not.toBeInTheDocument();
   });
-});
+
 
 describe('Admisión (Master-Detail)', () => {
   it('abre el detalle del paciente con sus solicitudes', async () => {

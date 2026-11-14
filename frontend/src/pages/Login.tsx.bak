@@ -1,0 +1,247 @@
+﻿import {
+  Activity,
+  ArrowRight,
+  CheckCircle2,
+  Eye,
+  EyeOff,
+  LockKeyhole,
+  Microscope,
+  ShieldCheck,
+} from 'lucide-react';
+import { useState, type FormEvent } from 'react';
+import { Navigate, useLocation } from 'react-router-dom';
+import { Alert } from '../components/UI/Alert';
+import { Button } from '../components/UI/Button';
+import { Campo, Input } from '../components/UI/Form';
+import { useAuth } from '../context/AuthContext';
+import { mensajeDeError } from '../services/api';
+
+const ETAPAS = [
+  'Admisión del paciente y solicitud médica',
+  'Recepción de la muestra e identificación',
+  'Procesamiento y registro de hallazgos',
+  'Validación y emisión de resultados',
+];
+
+export default function Login() {
+  const { usuario, iniciarSesion } = useAuth();
+  const location = useLocation();
+
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [mostrarPassword, setMostrarPassword] = useState(false);
+  const [enviando, setEnviando] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const destino =
+    (location.state as { from?: string } | null)?.from ?? '/dashboard';
+
+  if (usuario) {
+    return <Navigate to={destino} replace />;
+  }
+
+  async function enviar(evento: FormEvent<HTMLFormElement>) {
+    evento.preventDefault();
+
+    if (!username.trim() || !password || enviando) {
+      return;
+    }
+
+    setEnviando(true);
+    setError(null);
+
+    try {
+      await iniciarSesion(username.trim(), password);
+    } catch (e) {
+      setError(mensajeDeError(e));
+      setEnviando(false);
+    }
+  }
+
+  return (
+    <main className="login-page">
+      <section className="login-brand" aria-label="Información del laboratorio">
+        <div className="login-brand-inner">
+          <a className="login-brand-logo" href="/" aria-label="Inicio del laboratorio">
+            <span className="login-logo-icon">
+              <Microscope size={25} strokeWidth={1.8} aria-hidden="true" />
+            </span>
+            <span className="login-brand-name">
+              Laboratorio
+              <strong>Bacteriológico</strong>
+            </span>
+          </a>
+
+          <div className="login-brand-message">
+            <span className="login-eyebrow">
+              <Activity size={15} aria-hidden="true" />
+              CIENCIA · PRECISIÓN · CONFIANZA
+            </span>
+
+            <h1>
+              La precisión
+              <br />
+              comienza con
+              <br />
+              <span>cada muestra.</span>
+            </h1>
+
+            <p>
+              Plataforma de gestión de muestras, procesamiento microbiológico
+              y validación de resultados de laboratorio.
+            </p>
+
+            <div className="login-workflow">
+              <h2>El proceso del laboratorio</h2>
+
+              <ol>
+                {ETAPAS.map((etapa, index) => (
+                  <li key={etapa}>
+                    <span className="login-step-number">
+                      {String(index + 1).padStart(2, '0')}
+                    </span>
+                    <span>{etapa}</span>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          </div>
+
+          <div className="login-brand-footer">
+            <ShieldCheck size={17} aria-hidden="true" />
+            <span>Acceso exclusivo para personal autorizado</span>
+          </div>
+        </div>
+      </section>
+
+      <section className="login-content">
+        <div className="login-mobile-brand">
+          <span className="login-logo-icon">
+            <Microscope size={23} aria-hidden="true" />
+          </span>
+          <span className="login-brand-name">
+            Laboratorio
+            <strong>Bacteriológico</strong>
+          </span>
+        </div>
+
+        <div className="login-form-wrapper">
+          <div className="login-form-heading">
+            <span className="login-form-icon">
+              <LockKeyhole size={21} aria-hidden="true" />
+            </span>
+
+            <p className="login-form-overline">PORTAL DEL PERSONAL</p>
+            <h2>Bienvenido de nuevo</h2>
+            <p className="login-form-description">
+              Ingrese sus credenciales para acceder al sistema.
+            </p>
+          </div>
+
+          <form onSubmit={enviar} className="login-form" noValidate>
+            {error && (
+              <div className="login-error" role="alert">
+                <Alert>{error}</Alert>
+              </div>
+            )}
+
+            <Campo etiqueta="Usuario" className="login-field">
+              <Input
+                value={username}
+                onChange={(e) => {
+                  setUsername(e.target.value);
+                  if (error) setError(null);
+                }}
+                autoComplete="username"
+                autoFocus
+                autoCapitalize="none"
+                spellCheck={false}
+                placeholder="Ingrese su usuario"
+                required
+                disabled={enviando}
+                className="login-input"
+              />
+            </Campo>
+
+            <Campo etiqueta="Contraseña" className="login-field">
+              <div className="login-password-wrapper">
+                <Input
+                  type={mostrarPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    if (error) setError(null);
+                  }}
+                  autoComplete="current-password"
+                  placeholder="Ingrese su contraseña"
+                  required
+                  disabled={enviando}
+                  className="login-input login-password-input"
+                />
+
+                <button
+                  type="button"
+                  className="login-password-toggle"
+                  onClick={() => setMostrarPassword((actual) => !actual)}
+                  aria-label={
+                    mostrarPassword
+                      ? 'Ocultar contraseña'
+                      : 'Mostrar contraseña'
+                  }
+                  aria-pressed={mostrarPassword}
+                  disabled={enviando}
+                >
+                  {mostrarPassword ? (
+                    <EyeOff size={18} aria-hidden="true" />
+                  ) : (
+                    <Eye size={18} aria-hidden="true" />
+                  )}
+                </button>
+              </div>
+            </Campo>
+
+            <Button
+              type="submit"
+              variante="primario"
+              className="login-submit"
+              disabled={!username.trim() || !password || enviando}
+              cargando={enviando}
+            >
+              <span>{enviando ? 'Verificando acceso...' : 'Iniciar sesión'}</span>
+              {!enviando && (
+                <ArrowRight size={17} className="login-submit-arrow" aria-hidden="true" />
+              )}
+            </Button>
+
+            <p className="login-security-note">
+              <ShieldCheck size={16} aria-hidden="true" />
+              Sus credenciales se procesan de forma segura.
+            </p>
+          </form>
+
+          <div className="login-access-note">
+            <CheckCircle2 size={17} aria-hidden="true" />
+            <p>
+              <strong>Acceso controlado</strong>
+              <span>Disponible para usuarios autorizados del laboratorio.</span>
+            </p>
+          </div>
+        </div>
+
+        <footer className="login-content-footer">
+          <span>Sistema de Gestión de Laboratorio Bacteriológico</span>
+          <span>Plataforma institucional</span>
+        </footer>
+      </section>
+    </main>
+  );
+}
+
+export function PantallaCarga() {
+  return (
+    <div className="flex min-h-screen items-center justify-center gap-2 bg-lamina text-slate-500">
+      <span className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-violeta-200 border-t-violeta-700" />
+      <span>Cargando sesión...</span>
+    </div>
+  );
+}

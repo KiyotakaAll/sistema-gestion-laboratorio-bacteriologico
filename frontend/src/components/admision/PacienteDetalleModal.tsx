@@ -73,8 +73,8 @@ export function PacienteDetalleModal({ pacienteId, puedeEscribir, onCerrar, onCa
         {cargando && !paciente && <p className="text-slate-500">Cargando datos del paciente</p>}
         {paciente && (
           <>
-            <div className="flex items-start justify-between gap-4">
-              <Datos columnas={4}>
+            <div className="flex items-start justify-between gap-5 rounded-xl border border-[#e3e7ed] bg-[#fafbfd] p-5">
+                <Datos columnas={4}>
                 <Dato etiqueta="Edad">{`${calcularEdad(paciente.fechaNacimiento)} años`}</Dato>
                 <Dato etiqueta="Fecha de nacimiento">{formatFechaDia(paciente.fechaNacimiento)}</Dato>
                 <Dato etiqueta="Sexo">{SEXO_ETIQUETA[paciente.sexo]}</Dato>
@@ -170,9 +170,9 @@ function NuevaSolicitudForm({ pacienteId, onCancelar, onCreada }: { pacienteId: 
   }
 
   return (
-    <form onSubmit={enviar} className="mb-3 grid grid-cols-3 gap-3 rounded border border-violeta-200 bg-violeta-50/50 p-3">
+    <form onSubmit={enviar} className="mb-4 grid grid-cols-1 gap-x-5 gap-y-4 rounded-xl border border-[#e3e7ed] bg-[#fafbfd] p-5 md:grid-cols-3">
       {error && (
-        <div className="col-span-3">
+        <div className="md:col-span-3">
           <Alert detalles={detalles}>{error}</Alert>
         </div>
       )}
@@ -188,10 +188,10 @@ function NuevaSolicitudForm({ pacienteId, onCancelar, onCreada }: { pacienteId: 
       <Campo etiqueta="Diagnóstico presuntivo">
         <Input value={diagnostico} onChange={(e) => setDiagnostico(e.target.value)} />
       </Campo>
-      <Campo etiqueta="Observaciones" className="col-span-3">
+      <Campo etiqueta="Observaciones" className="md:col-span-3">
         <Textarea value={observaciones} onChange={(e) => setObservaciones(e.target.value)} rows={2} />
       </Campo>
-      <div className="col-span-3 flex justify-end gap-2">
+      <div className="flex flex-wrap items-center justify-end gap-3 border-t border-[#e3e7ed] pt-4 md:col-span-3"> 
         <Button onClick={onCancelar} disabled={guardando}>
           Cancelar
         </Button>

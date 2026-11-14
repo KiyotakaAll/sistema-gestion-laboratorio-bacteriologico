@@ -9,6 +9,7 @@ import Login, { PantallaCarga } from './pages/Login';
 import RecepcionMuestras from './pages/RecepcionMuestras';
 import ValidacionAthenea from './pages/ValidacionAthenea';
 import WorklistResultados from './pages/WorklistResultados';
+import Configuracion from './pages/Configuracion';
 
 /** Exige sesión; si no la hay, envía al login recordando a dónde quería ir. */
 function RutaProtegida() {
@@ -40,6 +41,7 @@ export default function App() {
       <Route path="/login" element={<Login />} />
       <Route element={<RutaProtegida />}>
         <Route element={<LayoutDesktop />}>
+	<Route path="/configuracion" element={<Configuracion />} />
           <Route index element={<Navigate to="/dashboard" replace />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/admision" element={<ConRol roles={rolesDeRuta('/admision')}><AdmisionPacientes /></ConRol>} />
