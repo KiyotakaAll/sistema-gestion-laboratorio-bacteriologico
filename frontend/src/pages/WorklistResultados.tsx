@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { EstadoResultadoBadge, ETIQUETA_ESTADO_RESULTADO, PrioridadBadge } from '../components/UI/Badge';
 import { DataTable, type Column } from '../components/UI/DataTable';
 import { ResultadoFormModal } from '../components/resultados/ResultadoFormModal';
@@ -36,6 +37,14 @@ export default function WorklistResultados() {
 
   return (
     <>
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <p className="text-sm text-slate-600">
+          Esta lista corresponde a muestras en procesamiento. Al completar sus resultados, pasan a procesadas y salen de esta lista. El historial completo se consulta en resultados registrados.
+        </p>
+        <Link to="/validacion" className="text-sm font-semibold text-violeta-700 underline hover:text-violeta-900">
+          Consultar resultados registrados
+        </Link>
+      </div>
       <DataTable
         columnas={columnas}
         filas={datos ?? []}
