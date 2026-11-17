@@ -1,6 +1,7 @@
 import { ChevronRight } from 'lucide-react';
 import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { rolesDeRuta } from '../components/navigation';
 import { EstadoMuestraBadge, ETIQUETA_ESTADO_MUESTRA, PrioridadBadge } from '../components/UI/Badge';
 import { DataTable, type Column } from '../components/UI/DataTable';
 import { useAuth } from '../context/AuthContext';
@@ -15,7 +16,12 @@ const ESTADOS: EstadoMuestra[] = [...FLUJO, 'RECHAZADA'];
 export default function Dashboard() {
   const navigate = useNavigate();
   const { tieneRol } = useAuth();
-  const veResultados = tieneRol('ADMINISTRADOR', 'BACTERIOLOGO', 'VALIDADOR');
+  const veRecepcion = tieneRol(...rolesDeRuta('/recepcion'));
+  const veResultados = tieneRol(...rolesDeRuta('/validacion'));
+  const rutaResultados = tieneRol('BACTERIOLOGO') ? '/worklist' : '/validacion';
+  const abreResultados = tieneRol(...rolesDeRuta(rutaResultados));
+  const IndicadorMuestra = veRecepcion ? 'button' : 'div';
+  const IndicadorResultados = abreResultados ? 'button' : 'div';
 
   // El API no tiene un endpoint de resumen: se consulta `total` de cada estado con pageSize=1.
   const conteos = useCarga(async () => {
@@ -59,36 +65,36 @@ export default function Dashboard() {
     <div className="space-y-4">
       <section aria-label="Muestras por estado" className="flex rounded border border-slate-300 bg-white">
         {FLUJO.map((estado, indice) => (
-          <button
+          <IndicadorMuestra
             key={estado}
-            type="button"
-            onClick={() => navigate(`/recepcion?estado=${estado}`)}
-            className="relative flex-1 border-r border-slate-200 px-4 py-3 text-left hover:bg-violeta-50"
+            type={veRecepcion ? 'button' : undefined}
+            onClick={veRecepcion ? () => navigate(`/recepcion?estado=${estado}`) : undefined}
+            className={`relative flex-1 border-r border-slate-200 px-4 py-3 text-left ${veRecepcion ? 'hover:bg-violeta-50' : ''}`}
           >
             <span className="block text-sm text-slate-600">{ETIQUETA_ESTADO_MUESTRA[estado]}</span>
             <span className="block font-serif text-3xl font-semibold tabular-nums text-violeta-900">{total ? total[estado] : '—'}</span>
             {indice < FLUJO.length - 1 && (
               <ChevronRight className="absolute -right-2.5 top-1/2 z-10 h-5 w-5 -translate-y-1/2 rounded-full bg-white text-violeta-400" aria-hidden />
             )}
-          </button>
+          </IndicadorMuestra>
         ))}
-        <button
-          type="button"
-          onClick={() => navigate('/recepcion?estado=RECHAZADA')}
-          className="flex-1 border-r border-slate-200 bg-rose-50/40 px-4 py-3 text-left hover:bg-rose-50"
+        <IndicadorMuestra
+          type={veRecepcion ? 'button' : undefined}
+          onClick={veRecepcion ? () => navigate('/recepcion?estado=RECHAZADA') : undefined}
+          className={`flex-1 border-r border-slate-200 bg-rose-50/40 px-4 py-3 text-left ${veRecepcion ? 'hover:bg-rose-50' : ''}`}
         >
           <span className="block text-sm text-rose-800">Rechazadas</span>
           <span className="block font-serif text-3xl font-semibold tabular-nums text-rose-800">{total ? total.RECHAZADA : '—'}</span>
-        </button>
+        </IndicadorMuestra>
         {veResultados && (
-          <button
-            type="button"
-            onClick={() => navigate(tieneRol('BACTERIOLOGO') ? '/worklist' : '/validacion')}
-            className="flex-1 bg-amber-50/50 px-4 py-3 text-left hover:bg-amber-50"
+          <IndicadorResultados
+            type={abreResultados ? 'button' : undefined}
+            onClick={abreResultados ? () => navigate(rutaResultados) : undefined}
+            className={`flex-1 bg-amber-50/50 px-4 py-3 text-left ${abreResultados ? 'hover:bg-amber-50' : ''}`}
           >
             <span className="block text-sm text-amber-900">Resultados por validar</span>
             <span className="block font-serif text-3xl font-semibold tabular-nums text-amber-900">{pendientes.datos ? pendientes.datos.total : '—'}</span>
-          </button>
+          </IndicadorResultados>
         )}
       </section>
 
@@ -101,7 +107,7 @@ export default function Dashboard() {
             columnas={columnasMuestras}
             filas={recientes.datos?.data ?? []}
             clave={(m) => m.id}
-            alHacerClic={tieneRol('ADMINISTRADOR', 'RECEPCIONISTA', 'BACTERIOLOGO') ? (m) => navigate(`/recepcion?muestraId=${m.id}`) : undefined}
+            alHacerClic={veRecepcion ? (m) => navigate(`/recepcion?muestraId=${m.id}`) : undefined}
             cargando={recientes.cargando}
             error={recientes.error}
             ocultarFiltro
@@ -115,7 +121,7 @@ export default function Dashboard() {
               columnas={columnasPendientes}
               filas={pendientes.datos?.data ?? []}
               clave={(r) => r.id}
-              alHacerClic={tieneRol('ADMINISTRADOR', 'VALIDADOR') ? () => navigate('/validacion') : undefined}
+              alHacerClic={veResultados && tieneRol('ADMINISTRADOR', 'VALIDADOR') ? () => navigate('/validacion') : undefined}
               cargando={pendientes.cargando}
               error={pendientes.error}
               ocultarFiltro
