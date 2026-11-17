@@ -185,6 +185,35 @@ describe('Admisión (Master-Detail)', () => {
     expect(screen.getByText('SOL-2026-000001')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Nueva solicitud/ })).toBeInTheDocument();
   });
+
+  it('recupera el foco del detalle al cerrar edición y luego vuelve a la fila del paciente', async () => {
+    vi.mocked(pacientesApi.listar).mockResolvedValue(paginado([ana]) as never);
+    vi.mocked(pacientesApi.obtener).mockResolvedValue({ ...ana, solicitudes: [] } as never);
+    entrar('/admision', 'RECEPCIONISTA');
+    const usuario = userEvent.setup();
+    const fila = (await screen.findByText('Pérez, Ana')).closest('tr')!;
+    await usuario.click(fila);
+    const detalle = await screen.findByRole('dialog', { name: 'Pérez, Ana' });
+    const editar = await within(detalle).findByRole('button', { name: 'Editar datos' });
+    await usuario.click(editar);
+    const edicion = screen.getByRole('dialog', { name: 'Editar paciente' });
+    expect(edicion).toHaveFocus();
+    expect(detalle.closest('[data-modal-layer]')).toHaveAttribute('inert');
+
+    await usuario.tab();
+    expect(within(edicion).getByRole('button', { name: 'Cerrar' })).toHaveFocus();
+    await usuario.tab({ shift: true });
+    expect(within(edicion).getByRole('button', { name: 'Guardar cambios' })).toHaveFocus();
+    await usuario.keyboard('{Escape}');
+
+    expect(screen.queryByRole('dialog', { name: 'Editar paciente' })).not.toBeInTheDocument();
+    expect(detalle).toBeInTheDocument();
+    expect(editar).toHaveFocus();
+    expect(pacientesApi.actualizar).not.toHaveBeenCalled();
+    await usuario.keyboard('{Escape}');
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(fila).toHaveFocus();
+  });
 });
 
 describe('Tabla densa', () => {
