@@ -57,8 +57,8 @@ export function ResultadoRevisionModal({ resultado: inicial, usuarioActualId, pu
       ancho="xl"
       titulo={examen.nombre}
       subtitulo={<EstadoResultadoBadge estado={resultado.estado} />}
-      onCerrar={onCerrar}
-      pie={<Button onClick={onCerrar}>Cerrar</Button>}
+      onCerrar={() => { if (!validando) onCerrar(); }}
+      pie={<Button onClick={onCerrar} disabled={validando}>Cerrar</Button>}
     >
       <Datos columnas={4}>
         <Dato etiqueta="Paciente" className="col-span-2">

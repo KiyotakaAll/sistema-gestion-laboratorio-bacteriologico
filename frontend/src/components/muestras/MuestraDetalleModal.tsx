@@ -107,10 +107,10 @@ export function MuestraDetalleModal({ muestraId, onCerrar, onCambio }: Props) {
       ancho="xl"
       titulo={m ? `Muestra ${m.codigoBarras}` : 'Muestra'}
       subtitulo={m ? <EstadoMuestraBadge estado={m.estado} /> : undefined}
-      onCerrar={onCerrar}
+      onCerrar={() => { if (!ejecutando) onCerrar(); }}
       pie={
         <>
-          <Button onClick={onCerrar}>Cerrar</Button>
+          <Button onClick={onCerrar} disabled={ejecutando}>Cerrar</Button>
           {puedeRechazar && !rechazando && (
             <Button variante="peligro" icono={<Ban className="h-3.5 w-3.5" aria-hidden />} onClick={() => setRechazando(true)} disabled={ejecutando}>
               Rechazar muestra

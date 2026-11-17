@@ -67,7 +67,7 @@ export function PacienteFormModal({ paciente, onCerrar, onGuardado }: Props) {
       ancho="md"
       titulo={paciente ? 'Editar paciente' : 'Registrar paciente'}
       subtitulo={paciente ? `Cédula ${paciente.cedula}` : undefined}
-      onCerrar={onCerrar}
+      onCerrar={() => { if (!guardando) onCerrar(); }}
       pie={
         <>
           <Button onClick={onCerrar} disabled={guardando}>

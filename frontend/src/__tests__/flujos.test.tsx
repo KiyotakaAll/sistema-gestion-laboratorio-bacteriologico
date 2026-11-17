@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -53,6 +53,16 @@ const paginado = <T,>(data: T[]) => ({ data, total: data.length, page: 1, pageSi
 
 const ana = paciente(1, 'Ana', 'Pérez');
 const luis = paciente(2, 'Luis', 'Gómez');
+
+function respuestaPendiente() {
+  let resolver!: (valor: unknown) => void;
+  let rechazar!: (error: unknown) => void;
+  const promesa = new Promise<unknown>((resolve, reject) => {
+    resolver = resolve;
+    rechazar = reject;
+  });
+  return { promesa, resolver, rechazar };
+}
 
 function entrar(ruta: string, rol: RolNombre, id = 9) {
   localStorage.setItem('lab_token', 'token-de-prueba');
@@ -460,6 +470,224 @@ describe('Recepción de muestras', () => {
     await u.click(confirmar);
     await waitFor(() => expect(muestrasApi.rechazar).toHaveBeenCalledWith(3, 'Volumen insuficiente'));
   });
+});
+
+const GUARDADOS_MODALES = [
+  'registrar paciente', 'editar paciente', 'crear solicitud', 'registrar muestra',
+  'registrar resultado', 'corregir resultado', 'validar resultado',
+  'receptar muestra', 'procesar muestra', 'rechazar muestra',
+] as const;
+type GuardadoModal = typeof GUARDADOS_MODALES[number];
+
+async function prepararGuardadoModal(caso: GuardadoModal) {
+  const usuario = userEvent.setup();
+  const pendiente = respuestaPendiente();
+  const detallePaciente = { ...ana, solicitudes: [] };
+  const detalleMuestra = { ...muestra(ana), examenes: [], recepcionadoPor: null };
+  const valores: { etiqueta: string | RegExp; valor: string }[] = [];
+  let respuesta: unknown;
+  let mensaje: string;
+  let enviar: string;
+  let cierraAlGuardar = true;
+
+  if (caso === 'registrar paciente' || caso === 'editar paciente' || caso === 'crear solicitud') {
+    vi.mocked(pacientesApi.listar).mockResolvedValue(paginado([ana]));
+    vi.mocked(pacientesApi.obtener).mockResolvedValue(detallePaciente);
+    entrar('/admision', 'RECEPCIONISTA');
+    if (caso === 'registrar paciente') {
+      vi.mocked(pacientesApi.crear).mockReturnValue(pendiente.promesa as never);
+      await usuario.click(await screen.findByRole('button', { name: 'Registrar paciente' }));
+      await usuario.type(screen.getByLabelText('Cédula'), ana.cedula);
+      await usuario.type(screen.getByLabelText('Nombres'), ana.nombres);
+      await usuario.type(screen.getByLabelText('Apellidos'), ana.apellidos);
+      fireEvent.change(screen.getByLabelText('Fecha de nacimiento'), { target: { value: '1990-05-12' } });
+      enviar = 'Registrar paciente';
+      mensaje = 'Paciente registrado';
+      valores.push({ etiqueta: 'Nombres', valor: 'Ana' }, { etiqueta: 'Cédula', valor: ana.cedula });
+      respuesta = ana;
+    } else {
+      await usuario.click(await screen.findByText('Pérez, Ana'));
+      if (caso === 'editar paciente') {
+        vi.mocked(pacientesApi.actualizar).mockReturnValue(pendiente.promesa as never);
+        await usuario.click(await screen.findByRole('button', { name: 'Editar datos' }));
+        await usuario.clear(screen.getByLabelText('Nombres'));
+        await usuario.type(screen.getByLabelText('Nombres'), 'Ana María');
+        enviar = 'Guardar cambios';
+        mensaje = 'Datos del paciente actualizados';
+        valores.push({ etiqueta: 'Nombres', valor: 'Ana María' });
+        respuesta = { ...ana, nombres: 'Ana María' };
+      } else {
+        vi.mocked(solicitudesApi.crear).mockReturnValue(pendiente.promesa as never);
+        await usuario.click(await screen.findByRole('button', { name: 'Nueva solicitud' }));
+        await usuario.type(screen.getByLabelText('Diagnóstico presuntivo'), 'ITU de prueba');
+        enviar = 'Crear solicitud';
+        mensaje = `Solicitud ${solicitud(ana).codigo} creada. Ya puede registrar sus muestras.`;
+        valores.push({ etiqueta: 'Diagnóstico presuntivo', valor: 'ITU de prueba' });
+        respuesta = { ...solicitud(ana), registradoPor: resultado(ana, 3).registradoPor, muestras: [] };
+        cierraAlGuardar = false;
+      }
+    }
+  } else if (caso === 'registrar muestra') {
+    vi.mocked(solicitudesApi.listar).mockResolvedValue(paginado([{ ...solicitud(ana), _count: { muestras: 0 } }]));
+    vi.mocked(examenesApi.listar).mockResolvedValue([examen]);
+    vi.mocked(muestrasApi.obtener).mockResolvedValue(detalleMuestra);
+    vi.mocked(muestrasApi.trazabilidad).mockResolvedValue([]);
+    vi.mocked(muestrasApi.registrar).mockReturnValue(pendiente.promesa as never);
+    entrar('/recepcion', 'RECEPCIONISTA');
+    await usuario.click(await screen.findByRole('button', { name: 'Registrar muestra' }));
+    await usuario.type(screen.getByLabelText('Cédula del paciente'), `${ana.cedula}{Enter}`);
+    await usuario.click(await screen.findByText(solicitud(ana).codigo));
+    await usuario.click(screen.getByRole('checkbox', { name: /Urocultivo/ }));
+    await usuario.type(screen.getByLabelText('Sitio anatómico'), 'Sitio de prueba');
+    valores.push({ etiqueta: 'Tipo de muestra', valor: 'Orina' }, { etiqueta: 'Sitio anatómico', valor: 'Sitio de prueba' });
+    enviar = 'Registrar muestra';
+    mensaje = `Muestra registrada con código ${detalleMuestra.codigoBarras}`;
+    respuesta = detalleMuestra;
+  } else if (caso === 'registrar resultado' || caso === 'corregir resultado') {
+    const item = { ...itemWorklist(ana, 5), resultado: caso === 'corregir resultado' ? resultado(ana, 3) : null };
+    vi.mocked(resultadosApi.worklist).mockResolvedValue([item]);
+    if (caso === 'corregir resultado') vi.mocked(resultadosApi.actualizar).mockReturnValue(pendiente.promesa as never);
+    else vi.mocked(resultadosApi.registrar).mockReturnValue(pendiente.promesa as never);
+    entrar('/worklist', 'BACTERIOLOGO');
+    await usuario.click(await screen.findByText('Pérez, Ana'));
+    const bacteria = screen.getByLabelText(/Bacteria aislada/);
+    await usuario.clear(bacteria);
+    await usuario.type(bacteria, 'Klebsiella pneumoniae');
+    valores.push({ etiqueta: /Bacteria aislada/, valor: 'Klebsiella pneumoniae' });
+    enviar = caso === 'corregir resultado' ? 'Guardar corrección' : 'Guardar resultado';
+    mensaje = caso === 'corregir resultado'
+      ? 'Resultado corregido, queda pendiente de validación'
+      : 'Resultado guardado, queda pendiente de validación';
+    respuesta = resultado(ana, 9);
+  } else if (caso === 'validar resultado') {
+    vi.mocked(resultadosApi.listar).mockResolvedValue(paginado([resultado(ana, 3)]));
+    vi.mocked(resultadosApi.validar).mockReturnValue(pendiente.promesa as never);
+    entrar('/validacion', 'VALIDADOR');
+    await usuario.click(await screen.findByText('Pérez, Ana'));
+    await usuario.click(screen.getByRole('button', { name: 'Validar resultado' }));
+    enviar = 'Confirmar validación';
+    mensaje = 'Resultado validado';
+    respuesta = {
+      ...resultado(ana, 3), estado: 'VALIDADO', usuarioIdValida: 9, fechaValidacion: FECHA,
+      validadoPor: { id: 9, username: 'val', nombreCompleto: 'Dra. Ortiz' },
+    };
+    cierraAlGuardar = false;
+  } else {
+    const m = { ...detalleMuestra, estado: caso === 'procesar muestra' ? 'RECEPTADA' as const : 'REGISTRADA' as const };
+    vi.mocked(muestrasApi.listar).mockResolvedValue(paginado([m]));
+    vi.mocked(muestrasApi.obtener).mockResolvedValue(m);
+    vi.mocked(muestrasApi.trazabilidad).mockResolvedValue([]);
+    entrar('/recepcion', caso === 'procesar muestra' ? 'BACTERIOLOGO' : 'RECEPCIONISTA');
+    await usuario.click(await screen.findByText('Pérez, Ana'));
+    if (caso === 'rechazar muestra') {
+      vi.mocked(muestrasApi.rechazar).mockReturnValue(pendiente.promesa as never);
+      await usuario.click(await screen.findByRole('button', { name: 'Rechazar muestra' }));
+      await usuario.type(screen.getByLabelText(/Motivo del rechazo/), 'Volumen insuficiente de prueba');
+      valores.push({ etiqueta: /Motivo del rechazo/, valor: 'Volumen insuficiente de prueba' });
+      enviar = 'Confirmar rechazo';
+      mensaje = 'Muestra rechazada';
+    } else if (caso === 'procesar muestra') {
+      vi.mocked(muestrasApi.procesar).mockReturnValue(pendiente.promesa as never);
+      enviar = 'Iniciar procesamiento';
+      mensaje = 'Procesamiento iniciado';
+    } else {
+      vi.mocked(muestrasApi.receptar).mockReturnValue(pendiente.promesa as never);
+      enviar = 'Receptar muestra';
+      mensaje = 'Muestra receptada';
+    }
+    respuesta = m;
+    cierraAlGuardar = false;
+  }
+
+  const dialogo = await screen.findByRole('dialog', caso === 'editar paciente' ? { name: 'Editar paciente' } : undefined);
+  const guardar = within(dialogo).getByRole('button', { name: enviar });
+  await usuario.click(guardar);
+  await waitFor(() => expect(guardar).toBeDisabled());
+  return { usuario, pendiente, dialogo, valores, respuesta, mensaje, cierraAlGuardar, guardar };
+}
+
+describe('Formularios modales: cierre durante peticiones pendientes', () => {
+  for (const caso of GUARDADOS_MODALES) {
+    for (const desenlace of ['exito', 'error'] as const) {
+      it(`${caso}: bloquea Escape, X, fondo y Cancelar hasta ${desenlace}`, async () => {
+        const contexto = await prepararGuardadoModal(caso);
+        const { usuario, pendiente, dialogo, valores, respuesta, mensaje, cierraAlGuardar, guardar } = contexto;
+        const capas = document.querySelectorAll('[data-modal-layer]').length;
+        const comprobarContexto = () => {
+          expect(dialogo).toBeInTheDocument();
+          expect(document.querySelectorAll('[data-modal-layer]')).toHaveLength(capas);
+          expect(document.body.style.overflow).toBe('hidden');
+          for (const { etiqueta, valor } of valores) {
+            expect(within(dialogo).getByLabelText(etiqueta)).toHaveValue(valor);
+          }
+          if (caso === 'editar paciente') {
+            const inferior = screen.getByRole('dialog', { name: 'Pérez, Ana', hidden: true });
+            expect(inferior.closest('[data-modal-layer]')).toHaveAttribute('inert');
+          }
+        };
+
+        await usuario.keyboard('{Escape}');
+        comprobarContexto();
+        const botonesCerrar = within(dialogo).getAllByRole('button', { name: 'Cerrar' });
+        await usuario.click(botonesCerrar[0]!); // X del encabezado.
+        comprobarContexto();
+        await usuario.click(dialogo.previousElementSibling!); // Fondo del portal, fuera del diálogo.
+        comprobarContexto();
+        for (const cancelar of within(dialogo).queryAllByRole('button', { name: 'Cancelar' })) {
+          expect(cancelar).toBeDisabled();
+          await usuario.click(cancelar);
+          comprobarContexto();
+        }
+        for (const cerrarPie of botonesCerrar.slice(1)) {
+          expect(cerrarPie).toBeDisabled();
+          await usuario.click(cerrarPie);
+          comprobarContexto();
+        }
+        expect(dialogo.contains(document.activeElement)).toBe(true);
+        const mutaciones = [
+          pacientesApi.crear, pacientesApi.actualizar, solicitudesApi.crear, muestrasApi.registrar,
+          muestrasApi.receptar, muestrasApi.procesar, muestrasApi.rechazar,
+          resultadosApi.registrar, resultadosApi.actualizar, resultadosApi.validar,
+        ];
+        expect(mutaciones.reduce((total, api) => total + vi.mocked(api).mock.calls.length, 0)).toBe(1);
+
+        if (desenlace === 'error') {
+          await act(async () => pendiente.rechazar(Object.assign(new Error('fallo simulado'), {
+            isAxiosError: true,
+            response: { status: 500, data: { error: { message: 'No se pudo guardar la prueba.' } } },
+          })));
+          expect(await within(dialogo).findByRole('alert')).toHaveTextContent('No se pudo guardar la prueba.');
+          comprobarContexto();
+          expect(guardar).toBeEnabled();
+          await usuario.keyboard('{Escape}');
+          expect(dialogo).not.toBeInTheDocument();
+        } else {
+          await act(async () => pendiente.resolver(respuesta));
+          expect(await screen.findByText(mensaje)).toBeInTheDocument();
+          if (cierraAlGuardar) {
+            await waitFor(() => expect(dialogo).not.toBeInTheDocument());
+          } else {
+            expect(dialogo).toBeInTheDocument();
+            expect(within(dialogo).queryByRole('button', { name: 'Crear solicitud' })).not.toBeInTheDocument();
+            const cerrar = within(dialogo).getAllByRole('button', { name: 'Cerrar' }).at(-1)!;
+            expect(cerrar).toBeEnabled();
+            await usuario.click(cerrar);
+            expect(dialogo).not.toBeInTheDocument();
+          }
+        }
+
+        if (caso === 'editar paciente') {
+          const inferior = screen.getByRole('dialog', { name: 'Pérez, Ana' });
+          expect(within(inferior).getByRole('button', { name: 'Editar datos' })).toHaveFocus();
+          if (desenlace === 'exito') {
+            expect(within(inferior).getByText('Datos del paciente actualizados')).toBeInTheDocument();
+          }
+          await usuario.keyboard('{Escape}');
+          expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+        }
+      });
+    }
+  }
 });
 
 describe('Registro de muestra', () => {

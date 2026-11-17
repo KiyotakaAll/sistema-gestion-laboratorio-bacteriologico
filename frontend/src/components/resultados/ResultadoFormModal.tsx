@@ -113,7 +113,7 @@ export function ResultadoFormModal({ item, puedeEditar, onCerrar, onGuardado }: 
       ancho="xl"
       titulo={item.examen.nombre}
       subtitulo={existente ? <EstadoResultadoBadge estado={existente.estado} /> : 'Sin resultado cargado'}
-      onCerrar={onCerrar}
+      onCerrar={() => { if (!guardando) onCerrar(); }}
       pie={
         soloLectura ? (
           <Button onClick={onCerrar}>Cerrar</Button>
