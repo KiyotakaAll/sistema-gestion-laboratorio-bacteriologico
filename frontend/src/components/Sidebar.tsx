@@ -19,13 +19,13 @@ export function Sidebar() {
 
         <div className="min-w-0">
           <p className="text-[13px] leading-5 text-[#D3CCDF]">
-            Laboratorio
+            Sistema de gestión
           </p>
           <p className="font-serif text-[16px] font-semibold leading-5 text-white">
-            Bacteriológico
+            LabZen
           </p>
           <p className="mt-1 text-[11px] text-[#BBA1D9]">
-            Sistema de gestión
+            Laboratorio bacteriológico
           </p>
         </div>
       </div>

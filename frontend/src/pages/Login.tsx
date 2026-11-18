@@ -63,13 +63,13 @@ export default function Login() {
       <section className="login-brand" aria-label="Información del laboratorio">
         <div className="login-brand-inner">
           <a className="login-brand-logo" href="/" aria-label="Inicio del laboratorio">
-            <span className="login-logo-icon">
-              <Microscope size={25} strokeWidth={1.8} aria-hidden="true" />
-            </span>
-            <span className="login-brand-name">
-              Laboratorio
-              <strong>Bacteriológico</strong>
-            </span>
+            <img
+              className="login-brand-image"
+              src="/branding/labzen/LabZen_logo_aprobado_SIN_MODIFICACIONES.png"
+              alt="LabZen"
+              width={1536}
+              height={1024}
+            />
           </a>
 
           <div className="login-brand-message">
@@ -120,8 +120,8 @@ export default function Login() {
             <Microscope size={23} aria-hidden="true" />
           </span>
           <span className="login-brand-name">
-            Laboratorio
-            <strong>Bacteriológico</strong>
+            <strong>LabZen</strong>
+            Laboratorio bacteriológico
           </span>
         </div>
 
@@ -229,7 +229,7 @@ export default function Login() {
 
         <footer className="login-content-footer">
           <span>Sistema de Gestión de Laboratorio Bacteriológico</span>
-          <span>Plataforma institucional</span>
+          <span>Precisión y trazabilidad en cada proceso</span>
         </footer>
       </section>
     </main>

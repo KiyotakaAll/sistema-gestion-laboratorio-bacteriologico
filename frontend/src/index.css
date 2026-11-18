@@ -102,8 +102,18 @@
   align-items: center;
   align-self: flex-start;
   gap: 13px;
+  padding: 8px;
+  border-radius: 12px;
+  background: #fff;
   color: #fff;
   text-decoration: none;
+}
+
+.login-brand-image {
+  display: block;
+  width: 180px;
+  max-width: 100%;
+  height: auto;
 }
 
 .login-logo-icon {
@@ -476,8 +486,8 @@
   margin-top: 36px;
   padding-top: 18px;
   border-top: 1px solid #e3e7ed;
-  color: #8a93a2;
-  font-size: 10px;
+  color: #647084;
+  font-size: 11px;
   line-height: 1.6;
 }
 
