@@ -65,7 +65,7 @@ export default function AdmisionPacientes() {
                   setPagina(1);
                 }}
                 placeholder="Buscar por cédula, nombres o apellidos"
-                className="h-7 w-full rounded-sm border border-slate-300 bg-white pl-7 pr-2 text-sm placeholder:text-slate-400 focus:border-violeta-500"
+                className="h-7 w-full rounded-sm border border-slate-300 bg-surface pl-7 pr-2 text-sm placeholder:text-slate-400 focus:border-violeta-500"
               />
             </label>
             {puedeEscribir && (

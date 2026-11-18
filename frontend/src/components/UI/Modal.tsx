@@ -227,22 +227,22 @@ export function Modal({
         aria-modal="true"
         aria-labelledby={idTitulo}
         tabIndex={-1}
-        className={`relative flex max-h-[calc(100vh-3rem)] w-full flex-col overflow-hidden rounded-2xl border border-[#e3e7ed] bg-white shadow-2xl outline-none sm:max-h-[calc(100vh-4rem)] ${ANCHO[ancho]}`}
+        className={`relative flex max-h-[calc(100vh-3rem)] w-full flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-2xl outline-none sm:max-h-[calc(100vh-4rem)] ${ANCHO[ancho]}`}
       >
 
         {/* Encabezado */}
-        <header className="flex shrink-0 items-start justify-between gap-4 border-b border-[#edf0f4] bg-white px-6 py-5">
+        <header className="flex shrink-0 items-start justify-between gap-4 border-b border-line bg-surface px-6 py-5">
 
           <div className="min-w-0">
             <h2
               id={idTitulo}
-              className="font-serif text-2xl font-semibold leading-tight tracking-tight text-[#30203f]"
+              className="font-serif text-2xl font-semibold leading-tight tracking-tight text-heading"
             >
               {titulo}
             </h2>
 
             {subtitulo && (
-              <div className="mt-1.5 text-sm text-[#68758a]">
+              <div className="mt-1.5 text-sm text-muted">
                 {subtitulo}
               </div>
             )}
@@ -251,7 +251,7 @@ export function Modal({
           <button
             type="button"
             onClick={() => onCerrar()}
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-[#788294] transition-colors hover:bg-[#f5f1fb] hover:text-[#60379a]"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-muted transition-colors hover:bg-accent-soft hover:text-accent"
             aria-label="Cerrar"
           >
             <X className="h-5 w-5" />
@@ -259,13 +259,13 @@ export function Modal({
         </header>
 
         {/* Contenido */}
-        <div className="min-h-0 flex-1 overflow-y-auto bg-white px-6 py-4">
+        <div className="min-h-0 flex-1 overflow-y-auto bg-surface px-6 py-4">
           {children}
         </div>
 
         {/* Acciones */}
         {pie && (
-          <footer className="flex shrink-0 flex-wrap items-center justify-end gap-3 border-t border-[#edf0f4] bg-[#fafbfd] px-6 py-4">
+          <footer className="flex shrink-0 flex-wrap items-center justify-end gap-3 border-t border-line bg-subtle px-6 py-4">
             {pie}
           </footer>
         )}

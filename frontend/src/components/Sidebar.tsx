@@ -1,15 +1,15 @@
 
-import { ChevronRight, Microscope, ShieldCheck } from 'lucide-react';
+import { ChevronRight, LogOut, Microscope, Settings, ShieldCheck } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 
 import { useAuth } from '../context/AuthContext';
 import { ETIQUETA_ROL, NAVEGACION } from './navigation';
 
 export function Sidebar() {
-  const { tieneRol } = useAuth();
+  const { tieneRol, cerrarSesion } = useAuth();
 
   const items = NAVEGACION.filter((item) =>
-    tieneRol(...item.roles),
+    item.ruta !== '/configuracion' && tieneRol(...item.roles),
   );
 
   const rolActual = (
@@ -22,7 +22,7 @@ export function Sidebar() {
   ).find((rol) => tieneRol(rol));
 
   return (
-    <aside className="flex w-[260px] shrink-0 flex-col bg-[#241833] text-[#F0EAF7]">
+    <aside className="sidebar flex h-screen sticky top-0 w-[260px] shrink-0 flex-col bg-[#241833] text-[#F0EAF7]">
       {/* Identidad institucional */}
       <div className="border-b border-white/10 px-5 py-6">
         <div className="flex items-center gap-3">
@@ -134,7 +134,7 @@ export function Sidebar() {
       </nav>
 
       {/* Pie del menú */}
-      <div className="border-t border-white/10 px-4 py-4">
+      <div className="shrink-0 border-t border-white/10 px-4 py-4">
         <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-3">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#5A3784]/60">
             <ShieldCheck
@@ -154,6 +154,16 @@ export function Sidebar() {
           </div>
         </div>
 
+        <div className="mt-3 flex items-center justify-center gap-3" role="group" aria-label="Cuenta y preferencias">
+          <NavLink to="/configuracion" aria-label="Configuración" title="Configuración"
+            className={({ isActive }) => `flex h-10 w-10 items-center justify-center rounded-lg transition-colors hover:bg-white/15 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white ${isActive ? 'bg-[#60379A] text-white' : 'text-[#D3CCDF]'}`}>
+            <Settings size={20} aria-hidden />
+          </NavLink>
+          <button type="button" onClick={cerrarSesion} aria-label="Cerrar sesión" title="Cerrar sesión"
+            className="flex h-10 w-10 items-center justify-center rounded-lg text-[#D3CCDF] transition-colors hover:bg-white/15 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">
+            <LogOut size={20} aria-hidden />
+          </button>
+        </div>
         <p className="mt-3 text-center text-[10px] text-[#A997BE]">
           Plataforma institucional
         </p>

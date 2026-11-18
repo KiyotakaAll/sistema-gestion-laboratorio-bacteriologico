@@ -4,7 +4,9 @@ import { BrowserRouter } from 'react-router-dom';
 import App from './App';
 import { AuthProvider } from './context/AuthContext';
 import { ToastProvider } from './context/ToastContext';
+import { PreferencesProvider } from './context/PreferencesContext';
 import './index.css';
+import './theme.css';
 
 const raiz = document.getElementById('root');
 if (!raiz) {
@@ -14,11 +16,13 @@ if (!raiz) {
 ReactDOM.createRoot(raiz).render(
   <React.StrictMode>
     <BrowserRouter>
-      <ToastProvider>
-        <AuthProvider>
-          <App />
-        </AuthProvider>
-      </ToastProvider>
+      <PreferencesProvider>
+        <ToastProvider>
+          <AuthProvider>
+            <App />
+          </AuthProvider>
+        </ToastProvider>
+      </PreferencesProvider>
     </BrowserRouter>
   </React.StrictMode>,
 );

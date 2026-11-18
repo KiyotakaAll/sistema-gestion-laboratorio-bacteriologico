@@ -14,6 +14,7 @@ export type Sensibilidad = 'S' | 'I' | 'R';
 export interface UsuarioSesion {
   id: number;
   username: string;
+  email?: string;
   nombreCompleto: string;
   rol: RolNombre;
 }
@@ -22,6 +23,12 @@ export interface UsuarioResumen {
   id: number;
   username: string;
   nombreCompleto: string;
+}
+
+export interface UsuarioAdministracion extends UsuarioSesion {
+  email: string;
+  activo: boolean;
+  createdAt: string;
 }
 
 export interface SesionIniciada {

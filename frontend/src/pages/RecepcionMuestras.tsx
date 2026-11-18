@@ -20,7 +20,7 @@ const ESTADOS = Object.keys(ETIQUETA_ESTADO_MUESTRA) as EstadoMuestra[];
 const PATRON_CODIGO = /^[A-Z0-9-]{8,30}$/;
 
 const claseFiltro =
-  'h-7 rounded-sm border border-slate-300 bg-white px-2 text-sm placeholder:text-slate-400 focus:border-violeta-500';
+  'h-7 rounded-sm border border-slate-300 bg-surface px-2 text-sm placeholder:text-slate-400 focus:border-violeta-500';
 
 export default function RecepcionMuestras() {
   const { tieneRol } = useAuth();

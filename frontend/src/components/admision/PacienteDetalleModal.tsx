@@ -74,7 +74,7 @@ export function PacienteDetalleModal({ pacienteId, puedeEscribir, onCerrar, onCa
         {cargando && !paciente && <p className="text-slate-500">Cargando datos del paciente</p>}
         {paciente && (
           <>
-            <div className="flex items-start justify-between gap-5 rounded-xl border border-[#e3e7ed] bg-[#fafbfd] p-5">
+            <div className="flex items-start justify-between gap-5 rounded-xl border border-line bg-subtle p-5">
                 <Datos columnas={4}>
                 <Dato etiqueta="Edad">{`${calcularEdad(paciente.fechaNacimiento)} años`}</Dato>
                 <Dato etiqueta="Fecha de nacimiento">{formatFechaDia(paciente.fechaNacimiento)}</Dato>
@@ -179,7 +179,7 @@ function NuevaSolicitudForm({ pacienteId, onCancelar, onCreada, guardando, setGu
   }
 
   return (
-    <form onSubmit={enviar} className="mb-4 grid grid-cols-1 gap-x-5 gap-y-4 rounded-xl border border-[#e3e7ed] bg-[#fafbfd] p-5 md:grid-cols-3">
+    <form onSubmit={enviar} className="mb-4 grid grid-cols-1 gap-x-5 gap-y-4 rounded-xl border border-line bg-subtle p-5 md:grid-cols-3">
       {error && (
         <div className="md:col-span-3">
           <Alert detalles={detalles}>{error}</Alert>
@@ -200,7 +200,7 @@ function NuevaSolicitudForm({ pacienteId, onCancelar, onCreada, guardando, setGu
       <Campo etiqueta="Observaciones" className="md:col-span-3">
         <Textarea value={observaciones} onChange={(e) => setObservaciones(e.target.value)} rows={2} />
       </Campo>
-      <div className="flex flex-wrap items-center justify-end gap-3 border-t border-[#e3e7ed] pt-4 md:col-span-3"> 
+      <div className="flex flex-wrap items-center justify-end gap-3 border-t border-line pt-4 md:col-span-3">
         <Button onClick={onCancelar} disabled={guardando}>
           Cancelar
         </Button>

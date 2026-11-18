@@ -199,7 +199,7 @@ export function ResultadoFormModal({ item, puedeEditar, onCerrar, onGuardado }: 
                       <div role="radiogroup" aria-label="Interpretación" className="flex overflow-hidden rounded-sm border border-slate-300">
                         {OPCIONES_SENSIBILIDAD.map((opcion) => {
                           const activa = fila.sensibilidad === opcion;
-                          const color = { S: 'bg-emerald-600', I: 'bg-amber-500', R: 'bg-rose-600' }[opcion];
+                          const color = { S: 'bg-emerald-700', I: 'bg-amber-700', R: 'bg-rose-700' }[opcion];
                           return (
                             <button
                               key={opcion}
@@ -208,7 +208,7 @@ export function ResultadoFormModal({ item, puedeEditar, onCerrar, onGuardado }: 
                               aria-checked={activa}
                               title={ETIQUETA_SENSIBILIDAD[opcion]}
                               onClick={() => actualizarFila(fila.clave, { sensibilidad: opcion })}
-                              className={`h-8 w-9 text-sm font-bold ${activa ? `${color} text-white` : 'bg-white text-slate-600 hover:bg-slate-100'}`}
+                              className={`h-8 w-9 text-sm font-bold ${activa ? `${color} text-white` : 'bg-surface text-slate-600 hover:bg-slate-100'}`}
                             >
                               {opcion}
                             </button>

@@ -1,10 +1,12 @@
 import bcrypt from 'bcrypt';
+import { randomUUID } from 'node:crypto';
+import { Prisma } from '@prisma/client';
 import jwt from 'jsonwebtoken';
 import { env } from '../config/env';
 import { prisma } from '../config/prisma';
 import { ROLES, type AuthenticatedUser, type RolNombre } from '../types/auth';
 import { AppError } from '../types/errors';
-import type { LoginInput } from '../validators/auth.validator';
+import type { LoginInput, RegistroInput } from '../validators/auth.validator';
 import { registrarLog } from './auditoria.service';
 
 /**
@@ -33,10 +35,16 @@ export interface SesionIniciada {
 }
 
 export async function iniciarSesion(input: LoginInput, ip: string | null): Promise<SesionIniciada> {
-  const usuario = await prisma.usuario.findUnique({
+  const porUsername = await prisma.usuario.findUnique({
     where: { username: input.username },
     include: { rol: { select: { nombre: true } } },
   });
+  // Se conserva la prioridad de los nombres de usuario de cuentas existentes.
+  const usuario = porUsername ?? (input.username.includes('@')
+    ? await prisma.usuario.findUnique({
+      where: { email: input.username.toLowerCase() },
+      include: { rol: { select: { nombre: true } } },
+    }) : null);
 
   const coincide = await bcrypt.compare(input.password, usuario?.passwordHash ?? HASH_FICTICIO);
 
@@ -80,7 +88,7 @@ export async function iniciarSesion(input: LoginInput, ip: string | null): Promi
 
   return {
     token,
-    usuario: { id: usuario.id, username: usuario.username, nombreCompleto: usuario.nombreCompleto, rol },
+    usuario: { id: usuario.id, username: usuario.username, email: usuario.email, nombreCompleto: usuario.nombreCompleto, rol },
   };
 }
 
@@ -96,7 +104,41 @@ export async function obtenerPerfil(usuarioId: number): Promise<AuthenticatedUse
   return {
     id: usuario.id,
     username: usuario.username,
+    email: usuario.email,
     nombreCompleto: usuario.nombreCompleto,
     rol: validarRol(usuario.rol.nombre),
   };
+}
+
+/** No emite tokens. La activación continúa bajo control institucional. */
+export async function registrarCuenta(input: RegistroInput): Promise<{ mensaje: string }> {
+  try {
+    return await crearCuentaInactiva(input);
+  } catch (error) {
+    if (error instanceof AppError) throw error;
+    throw new AppError(503, 'No se pudo procesar la solicitud. Intente más tarde.', 'REGISTRO_NO_DISPONIBLE');
+  }
+}
+
+async function crearCuentaInactiva(input: RegistroInput): Promise<{ mensaje: string }> {
+  const respuesta = { mensaje: 'Solicitud recibida. Si el correo está disponible, la cuenta quedará pendiente de activación por el laboratorio. Después podrá iniciar sesión con su correo.' };
+  // Se calcula también para duplicados para no exponer la existencia del correo.
+  const passwordHash = await bcrypt.hash(input.password, env.BCRYPT_ROUNDS);
+  const existente = await prisma.usuario.findUnique({ where: { email: input.email }, select: { id: true } });
+  if (existente) return respuesta;
+  const rol = await prisma.rol.findUnique({ where: { nombre: 'RECEPCIONISTA' }, select: { id: true } });
+  if (!rol) throw new AppError(503, 'El registro no está disponible. Contacte al laboratorio.', 'REGISTRO_NO_DISPONIBLE');
+  try {
+    await prisma.usuario.create({ data: {
+      nombreCompleto: input.nombreCompleto, email: input.email,
+      username: `r_${randomUUID().replace(/-/g, '')}`,
+      passwordHash, rolId: rol.id, activo: false,
+    }, select: { id: true } });
+  } catch (error) {
+    // La restricción única de la BD cubre registros simultáneos.
+    if (!(error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002')) {
+      throw new AppError(503, 'No se pudo procesar la solicitud. Intente más tarde.', 'REGISTRO_NO_DISPONIBLE');
+    }
+  }
+  return respuesta;
 }

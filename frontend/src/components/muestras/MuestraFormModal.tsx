@@ -53,10 +53,10 @@ const TIPOS_FRECUENTES = [
 const ID_FORMULARIO = 'form-muestra';
 
 const ESTILO_SECCION =
-  'min-w-0 rounded-xl border border-[#e3e7ed] bg-[#fafbfd] px-5 py-4';
+  'min-w-0 rounded-xl border border-line bg-subtle px-5 py-4';
 
 const ESTILO_TITULO =
-  'mb-3 font-serif text-lg font-semibold text-[#30203f]';
+  'mb-3 font-serif text-lg font-semibold text-heading';
 
 export function MuestraFormModal({
   solicitudIdInicial,
@@ -241,14 +241,14 @@ export function MuestraFormModal({
           </legend>
 
           {solicitud ? (
-            <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-[#ded4ee] bg-[#f5f1fb] px-4 py-3">
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-line bg-accent-soft px-4 py-3">
               <div className="min-w-0">
-                <p className="text-xs font-medium text-[#68758a]">
+                <p className="text-xs font-medium text-muted">
                   Solicitud seleccionada
                 </p>
 
-                <p className="mt-1 break-words text-sm text-[#30203f]">
-                  <span className="font-mono font-semibold text-[#60379a]">
+                <p className="mt-1 break-words text-sm text-heading">
+                  <span className="font-mono font-semibold text-accent">
                     {solicitud.codigo}
                   </span>
                   {' · '}
@@ -320,11 +320,11 @@ export function MuestraFormModal({
 
               {encontradas &&
                 encontradas.length > 0 && (
-                  <ul className="max-h-44 overflow-y-auto rounded-lg border border-[#e3e7ed] bg-white">
+                  <ul className="max-h-44 overflow-y-auto rounded-lg border border-line bg-surface">
                     {encontradas.map((s) => (
                       <li
                         key={s.id}
-                        className="border-b border-[#edf0f4] last:border-b-0"
+                        className="border-b border-line last:border-b-0"
                       >
                         <button
                           type="button"
@@ -337,10 +337,10 @@ export function MuestraFormModal({
                               ),
                             })
                           }
-                          className="flex w-full flex-wrap items-center justify-between gap-2 px-4 py-3 text-left transition-colors hover:bg-[#f5f1fb]"
+                          className="flex w-full flex-wrap items-center justify-between gap-2 px-4 py-3 text-left transition-colors hover:bg-accent-soft"
                         >
-                          <span className="min-w-0 text-sm text-[#30203f]">
-                            <span className="font-mono text-xs text-[#60379a]">
+                          <span className="min-w-0 text-sm text-heading">
+                            <span className="font-mono text-xs text-accent">
                               {s.codigo}
                             </span>
                             {' '}
@@ -351,7 +351,7 @@ export function MuestraFormModal({
                             </span>
                           </span>
 
-                          <span className="text-xs text-[#68758a]">
+                          <span className="text-xs text-muted">
                             {`${formatFechaHora(
                               s.fechaSolicitud,
                             )}, ${s._count.muestras} muestras`}
@@ -423,7 +423,7 @@ export function MuestraFormModal({
           )}
 
           {examenes.cargando && (
-            <p className="text-sm text-[#68758a]">
+            <p className="text-sm text-muted">
               Cargando catálogo de exámenes
             </p>
           )}
@@ -438,8 +438,8 @@ export function MuestraFormModal({
                   key={examen.id}
                   className={`flex min-w-0 cursor-pointer items-start gap-3 rounded-lg border px-3 py-2.5 transition-colors ${
                     seleccionado
-                      ? 'border-[#c8b5e1] bg-[#f5f1fb]'
-                      : 'border-[#e8ebf1] bg-white hover:border-[#d5c6e9] hover:bg-[#faf7fe]'
+                      ? 'border-[#c8b5e1] bg-accent-soft'
+                      : 'border-line bg-surface hover:border-line hover:bg-accent-soft'
                   }`}
                 >
                   <input
@@ -454,12 +454,12 @@ export function MuestraFormModal({
                     className="mt-0.5 h-4 w-4 shrink-0 accent-[#60379a]"
                   />
 
-                  <span className="min-w-0 text-sm leading-5 text-[#30203f]">
+                  <span className="min-w-0 text-sm leading-5 text-heading">
                     <span className="font-medium">
                       {examen.nombre}
                     </span>
 
-                    <span className="ml-1 text-xs text-[#68758a]">
+                    <span className="ml-1 text-xs text-muted">
                       ({examen.tipoMuestraRequerida})
                     </span>
                   </span>

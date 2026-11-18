@@ -1,197 +1,70 @@
-
+import { Bell, Monitor, Moon, Palette, ShieldCheck, Sun, UserRound } from 'lucide-react';
 import { useState } from 'react';
-import {
-  Bell,
-  Check,
-  LockKeyhole,
-  Monitor,
-  Moon,
-  Palette,
-  ShieldCheck,
-  Sun,
-  UserRound,
-} from 'lucide-react';
-
-import { useAuth } from '../context/AuthContext';
 import { ETIQUETA_ROL } from '../components/navigation';
+import { Button } from '../components/UI/Button';
+import { useAuth } from '../context/AuthContext';
+import { usePreferences, type Tema } from '../context/PreferencesContext';
 
-type Tema = 'claro' | 'oscuro' | 'sistema';
-
-const OPCIONES_TEMA: {
-  valor: Tema;
-  nombre: string;
-  descripcion: string;
-  icono: typeof Sun;
-}[] = [
-  {
-    valor: 'claro',
-    nombre: 'Claro',
-    descripcion: 'Interfaz luminosa',
-    icono: Sun,
-  },
-  {
-    valor: 'oscuro',
-    nombre: 'Oscuro',
-    descripcion: 'Interfaz oscura',
-    icono: Moon,
-  },
-  {
-    valor: 'sistema',
-    nombre: 'Automático',
-    descripcion: 'Según tu dispositivo',
-    icono: Monitor,
-  },
-];
+const TEMAS = [
+  { valor: 'claro', nombre: 'Claro', icono: Sun },
+  { valor: 'oscuro', nombre: 'Oscuro', icono: Moon },
+  { valor: 'sistema', nombre: 'Sistema', icono: Monitor },
+] as const;
 
 export default function Configuracion() {
   const { usuario } = useAuth();
-  const [tema, setTema] = useState<Tema>('claro');
-
-  return (
-    <div className="mx-auto max-w-5xl space-y-6 pb-10">
-      <div>
-        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8B65B5]">
-          Preferencias personales
-        </p>
-        <h1 className="mt-1 font-serif text-3xl font-semibold text-[#30213D]">
-          Configuración
-        </h1>
-        <p className="mt-2 text-sm text-slate-500">
-          Consulta tu perfil y personaliza tu experiencia en la plataforma.
-        </p>
-      </div>
-
-      {/* Perfil */}
-      <section className="overflow-hidden rounded-2xl border border-[#E8E0EE] bg-white shadow-sm">
-        <div className="flex items-center gap-3 border-b border-[#F0EAF5] px-6 py-5">
-          <div className="rounded-xl bg-[#F3ECFA] p-2.5">
-            <UserRound className="h-5 w-5 text-[#7545A5]" />
-          </div>
-          <div>
-            <h2 className="font-semibold text-[#30213D]">
-              Mi perfil
-            </h2>
-            <p className="text-xs text-slate-500">
-              Información de tu cuenta institucional
-            </p>
-          </div>
-        </div>
-
-        <div className="grid gap-5 p-6 sm:grid-cols-2">
-          <div>
-            <p className="mb-2 text-xs font-medium text-slate-500">
-              Usuario
-            </p>
-            <div className="rounded-xl border border-[#EAE4EF] bg-[#FAF8FC] px-4 py-3 text-sm text-[#30213D]">
-              {usuario?.username ?? 'No disponible'}
-            </div>
-          </div>
-
-          <div>
-            <p className="mb-2 text-xs font-medium text-slate-500">
-              Rol asignado
-            </p>
-            <div className="flex items-center gap-2 rounded-xl border border-[#EAE4EF] bg-[#FAF8FC] px-4 py-3 text-sm text-[#30213D]">
-              <ShieldCheck className="h-4 w-4 text-[#7545A5]" />
-              {usuario
-                ? ETIQUETA_ROL[usuario.rol]
-                : 'No disponible'}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Apariencia */}
-      <section className="overflow-hidden rounded-2xl border border-[#E8E0EE] bg-white shadow-sm">
-        <div className="flex items-center gap-3 border-b border-[#F0EAF5] px-6 py-5">
-          <div className="rounded-xl bg-[#F3ECFA] p-2.5">
-            <Palette className="h-5 w-5 text-[#7545A5]" />
-          </div>
-          <div>
-            <h2 className="font-semibold text-[#30213D]">
-              Apariencia
-            </h2>
-            <p className="text-xs text-slate-500">
-              Elige cómo prefieres visualizar la plataforma
-            </p>
-          </div>
-        </div>
-
-        <div className="grid gap-4 p-6 sm:grid-cols-3">
-          {OPCIONES_TEMA.map((opcion) => {
-            const Icono = opcion.icono;
-            const seleccionado = tema === opcion.valor;
-
-            return (
-              <button
-                key={opcion.valor}
-                type="button"
-                onClick={() => setTema(opcion.valor)}
-                aria-pressed={seleccionado}
-                className={[
-                  'relative flex flex-col items-start rounded-xl border-2 p-4 text-left transition-all',
-                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7545A5]',
-                  seleccionado
-                    ? 'border-[#7545A5] bg-[#F8F2FD]'
-                    : 'border-[#EAE4EF] bg-white hover:border-[#CDB5E2]',
-                ].join(' ')}
-              >
-                {seleccionado && (
-                  <Check className="absolute right-3 top-3 h-4 w-4 text-[#7545A5]" />
-                )}
-
-                <div className="mb-4 rounded-lg bg-[#F0E6F8] p-3">
-                  <Icono className="h-5 w-5 text-[#7545A5]" />
-                </div>
-
-                <span className="text-sm font-semibold text-[#30213D]">
-                  {opcion.nombre}
-                </span>
-                <span className="mt-1 text-xs text-slate-500">
-                  {opcion.descripcion}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-
-        <p className="px-6 pb-5 text-xs text-slate-500">
-          El selector es una vista preliminar. Aplicaremos los temas a
-          toda la plataforma en el siguiente paso.
-        </p>
-      </section>
-
-      {/* Notificaciones */}
-      <section className="flex items-start gap-4 rounded-2xl border border-[#E8E0EE] bg-white p-6 shadow-sm">
-        <div className="rounded-xl bg-[#F3ECFA] p-2.5">
-          <Bell className="h-5 w-5 text-[#7545A5]" />
-        </div>
-        <div>
-          <h2 className="font-semibold text-[#30213D]">
-            Notificaciones
-          </h2>
-          <p className="mt-1 text-sm text-slate-500">
-            Las preferencias de notificaciones estarán disponibles
-            cuando integremos esta funcionalidad.
-          </p>
-        </div>
-      </section>
-
-      {/* Seguridad */}
-      <section className="flex items-start gap-4 rounded-2xl border border-[#E8E0EE] bg-white p-6 shadow-sm">
-        <div className="rounded-xl bg-[#F3ECFA] p-2.5">
-          <LockKeyhole className="h-5 w-5 text-[#7545A5]" />
-        </div>
-        <div>
-          <h2 className="font-semibold text-[#30213D]">
-            Seguridad de la cuenta
-          </h2>
-          <p className="mt-1 text-sm text-slate-500">
-            Próximamente podrás gestionar tu contraseña y otras
-            opciones de seguridad desde esta sección.
-          </p>
-        </div>
-      </section>
+  const { preferencias, actualizar, restablecer } = usePreferences();
+  const [mensaje, setMensaje] = useState('');
+  const cambiarTema = (tema: Tema) => { actualizar({ tema }); setMensaje('Tema actualizado.'); };
+  return <div className="mx-auto max-w-5xl space-y-5 pb-8">
+    <div>
+      <p className="text-xs font-semibold uppercase tracking-widest text-accent">Preferencias personales</p>
+      <h1 className="mt-1 font-serif text-3xl font-semibold text-heading">Configuración</h1>
+      <p className="mt-2 text-muted">Personalice LabZen en este navegador. Las preferencias se guardan automáticamente cuando el navegador permite almacenamiento local.</p>
     </div>
-  );
+    <section className="settings-card" aria-labelledby="perfil-titulo">
+      <h2 id="perfil-titulo" className="settings-title"><UserRound aria-hidden size={20} /> Mi perfil y sesión</h2>
+      <dl className="mt-5 grid gap-4 sm:grid-cols-2">
+        {[
+          ['Nombre completo', usuario?.nombreCompleto], ['Correo electrónico', usuario?.email ?? 'No disponible'],
+          ['Usuario', usuario?.username], ['Rol asignado', usuario ? ETIQUETA_ROL[usuario.rol] : 'No disponible'],
+        ].map(([etiqueta, valor]) => <div key={etiqueta} className="rounded-lg border border-line bg-subtle p-3">
+          <dt className="text-xs text-muted">{etiqueta}</dt><dd className="mt-1 break-words font-semibold text-heading">{valor}</dd>
+        </div>)}
+      </dl>
+      <p className="mt-4 flex items-center gap-2 text-xs text-muted"><ShieldCheck size={16} aria-hidden /> Sesión autenticada. Al expirar deberá iniciar sesión nuevamente.</p>
+      <p className="mt-2 text-xs text-muted">Para cambiar sus datos o permisos, contacte al responsable del laboratorio.</p>
+    </section>
+    <section className="settings-card" aria-labelledby="apariencia-titulo">
+      <h2 id="apariencia-titulo" className="settings-title"><Palette aria-hidden size={20} /> Apariencia</h2>
+      <div className="mt-5 grid grid-cols-3 gap-3" role="group" aria-label="Tema de la interfaz">
+        {TEMAS.map(({ valor, nombre, icono: Icono }) => <button key={valor} type="button" aria-pressed={preferencias.tema === valor}
+          onClick={() => cambiarTema(valor)} className={`flex items-center justify-center gap-2 rounded-xl border-2 p-4 font-semibold transition-colors ${preferencias.tema === valor ? 'border-accent bg-accent-soft text-accent' : 'border-line bg-surface text-body hover:border-accent'}`}>
+          <Icono size={20} aria-hidden />{nombre}
+        </button>)}
+      </div>
+      <p className="mt-3 text-xs text-muted">Sistema sigue automáticamente la apariencia de su dispositivo.</p>
+      <fieldset className="mt-5 border-t border-line pt-4">
+        <legend className="font-semibold text-heading">Densidad visual</legend>
+        <div className="mt-2 flex gap-6">
+          {(['comoda', 'compacta'] as const).map((densidad) => <label key={densidad} className="flex cursor-pointer items-center gap-2">
+            <input type="radio" name="densidad" value={densidad} checked={preferencias.densidad === densidad} onChange={() => actualizar({ densidad })} />
+            {densidad === 'comoda' ? 'Cómoda' : 'Compacta'}
+          </label>)}
+        </div>
+        <p className="mt-2 text-xs text-muted">Ajusta el espacio de tablas, campos y botones.</p>
+      </fieldset>
+      <label className="mt-5 flex cursor-pointer items-center gap-3"><input type="checkbox" checked={preferencias.reducirMovimiento} onChange={(e) => actualizar({ reducirMovimiento: e.target.checked })} /> Reducir animaciones y transiciones</label>
+      <p className="mt-2 text-xs text-muted">También se respeta la preferencia de movimiento reducido del sistema.</p>
+    </section>
+    <section className="settings-card" aria-labelledby="avisos-titulo">
+      <h2 id="avisos-titulo" className="settings-title"><Bell aria-hidden size={20} /> Avisos visuales</h2>
+      <label className="mt-4 flex cursor-pointer items-center gap-3"><input type="checkbox" checked={preferencias.avisosInformativos} onChange={(e) => actualizar({ avisosInformativos: e.target.checked })} /> Mostrar avisos de éxito e información</label>
+      <p className="mt-2 text-xs text-muted">Controla los avisos emergentes de la interfaz. Los errores y las validaciones siempre se muestran.</p>
+    </section>
+    <div className="flex flex-wrap items-center justify-between gap-4">
+      <Button onClick={() => { restablecer(); setMensaje('Preferencias restablecidas.'); }}>Restablecer preferencias</Button>
+      <p role="status" className="text-sm text-muted">{mensaje}</p>
+    </div>
+  </div>;
 }

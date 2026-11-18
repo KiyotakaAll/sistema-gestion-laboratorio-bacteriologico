@@ -18,6 +18,17 @@ export default {
         xl: ['1.375rem', { lineHeight: '1.75rem' }],
       },
       colors: {
+        surface: 'rgb(var(--lz-surface) / <alpha-value>)',
+        canvas: 'rgb(var(--lz-canvas) / <alpha-value>)',
+        muted: 'rgb(var(--lz-muted) / <alpha-value>)',
+        subtle: 'rgb(var(--lz-subtle) / <alpha-value>)',
+        heading: 'rgb(var(--lz-heading) / <alpha-value>)',
+        body: 'rgb(var(--lz-body) / <alpha-value>)',
+        line: 'rgb(var(--lz-line) / <alpha-value>)',
+        accent: 'rgb(var(--lz-accent) / <alpha-value>)',
+        'accent-soft': 'rgb(var(--lz-accent-soft) / <alpha-value>)',
+        brand: '#60379A',
+        'brand-hover': '#4F2D80',
         // Fondo de la aplicación: el tono frío de un portaobjetos de vidrio.
         lamina: '#EDF1F5',
         // Violeta de cristal violeta, el colorante de la tinción de Gram: color de marca.

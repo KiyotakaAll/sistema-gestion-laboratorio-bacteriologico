@@ -7,6 +7,7 @@ import {
   Settings2,
   TestTubes,
   UserRoundPlus,
+  Users,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -64,6 +65,13 @@ export const NAVEGACION: ItemNavegacion[] = [
     titulo: 'Consulta y validación de resultados',
     icono: ClipboardCheck,
     roles: ['ADMINISTRADOR', 'BACTERIOLOGO', 'VALIDADOR'],
+  },
+  {
+    ruta: '/usuarios',
+    etiqueta: 'Gestión de usuarios',
+    titulo: 'Gestión de usuarios',
+    icono: Users,
+    roles: ['ADMINISTRADOR'],
   },
   {
     ruta: '/configuracion',
