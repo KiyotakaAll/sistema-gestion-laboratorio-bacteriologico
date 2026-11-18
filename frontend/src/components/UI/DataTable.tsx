@@ -167,10 +167,10 @@ export function DataTable<T>({
   }
 
   return (
-    <div className="flex min-h-0 flex-col overflow-hidden rounded-xl border border-[#e3e7ed] bg-white shadow-sm">
+    <div className="flex min-h-0 flex-col overflow-hidden rounded-xl border border-line bg-surface shadow-sm">
 
       {(!ocultarFiltro || barra) && (
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#edf0f4] bg-white px-5 py-4">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line bg-surface px-5 py-4">
 
           {!ocultarFiltro && (
             <label className="relative block w-full max-w-sm">
@@ -179,7 +179,7 @@ export function DataTable<T>({
               </span>
 
               <Search
-                className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#8993a3]"
+                className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted"
                 aria-hidden
               />
 
@@ -188,7 +188,7 @@ export function DataTable<T>({
                 value={filtro}
                 onChange={(e) => setFiltro(e.target.value)}
                 placeholder={placeholderFiltro}
-                className="h-10 w-full rounded-lg border border-[#d8dce7] bg-white pl-10 pr-3 text-sm text-[#30203f] outline-none transition-colors placeholder:text-[#9aa3b2] focus:border-[#7545ad] focus:ring-2 focus:ring-[#7545ad]/10"
+                className="h-10 w-full rounded-lg border border-line bg-surface pl-10 pr-3 text-sm text-heading outline-none transition-colors placeholder:text-muted focus:border-accent focus:ring-2 focus:ring-accent/10"
               />
             </label>
           )}
@@ -207,9 +207,9 @@ export function DataTable<T>({
             : undefined
         }
       >
-        <table className="w-full border-collapse text-sm">
+        <table className="data-table w-full border-collapse text-sm">
 
-          <thead className="sticky top-0 z-10 bg-[#f8f9fc]">
+          <thead className="sticky top-0 z-10 bg-subtle">
             <tr>
               {columnas.map((c) => {
                 const ordenable = c.sortable !== false;
@@ -237,21 +237,21 @@ export function DataTable<T>({
                           : 'descending'
                         : 'none'
                     }
-                    className={`border-b border-[#e8ebf1] px-4 py-3.5 text-xs font-semibold tracking-wide text-[#596579] ${ALINEACION[c.align ?? 'left']}`}
+                    className={`border-b border-line px-4 py-3.5 text-xs font-semibold tracking-wide text-muted ${ALINEACION[c.align ?? 'left']}`}
                   >
                     {ordenable ? (
                       <button
                         type="button"
                         onClick={() => alternarOrden(c.id)}
-                        className="inline-flex items-center gap-1.5 transition-colors hover:text-[#60379a]"
+                        className="inline-flex items-center gap-1.5 transition-colors hover:text-accent"
                       >
                         {c.header}
 
                         <Icono
                           className={`h-3.5 w-3.5 ${
                             activa
-                              ? 'text-[#60379a]'
-                              : 'text-[#a3acb9]'
+                              ? 'text-accent'
+                              : 'text-muted'
                           }`}
                           aria-hidden
                         />
@@ -265,16 +265,16 @@ export function DataTable<T>({
             </tr>
           </thead>
 
-          <tbody className="divide-y divide-[#edf0f4]">
+          <tbody className="divide-y divide-line">
 
             {cargando && filas.length === 0 && (
               <tr>
                 <td
                   colSpan={columnas.length}
-                  className="px-5 py-12 text-center text-[#68758a]"
+                  className="px-5 py-12 text-center text-muted"
                 >
                   <Loader2
-                    className="mr-2 inline h-4 w-4 animate-spin text-[#60379a]"
+                    className="mr-2 inline h-4 w-4 animate-spin text-accent"
                     aria-hidden
                   />
                   Cargando datos...
@@ -299,7 +299,7 @@ export function DataTable<T>({
                 <tr>
                   <td
                     colSpan={columnas.length}
-                    className="px-5 py-14 text-center text-[#788294]"
+                    className="px-5 py-14 text-center text-muted"
                   >
                     {filas.length > 0
                       ? 'Ninguna fila coincide con el filtro.'
@@ -326,7 +326,7 @@ export function DataTable<T>({
                 }
                 className={`transition-colors ${
                   alHacerClic
-                    ? 'cursor-pointer hover:bg-[#f7f3fc] focus-visible:bg-[#f7f3fc]'
+                    ? 'cursor-pointer hover:bg-accent-soft focus-visible:bg-accent-soft'
                     : ''
                 } ${
                   cargando ? 'opacity-60' : ''
@@ -335,12 +335,12 @@ export function DataTable<T>({
                 {columnas.map((c) => (
                   <td
                     key={c.id}
-                    className={`px-4 py-3.5 align-middle text-[#475467] ${ALINEACION[c.align ?? 'left']}`}
+                    className={`px-4 py-3.5 align-middle text-body ${ALINEACION[c.align ?? 'left']}`}
                   >
                     {c.cell
                       ? c.cell(fila)
                       : c.accessor(fila) ?? (
-                          <span className="text-[#a3acb9]">
+                          <span className="text-muted">
                             —
                           </span>
                         )}
@@ -352,7 +352,7 @@ export function DataTable<T>({
         </table>
       </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[#edf0f4] bg-[#fafbfd] px-5 py-3 text-xs text-[#68758a]">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line bg-subtle px-5 py-3 text-xs text-muted">
 
         <span>
           {paginacion
@@ -373,15 +373,14 @@ export function DataTable<T>({
               disabled={
                 paginacion.page <= 1 || cargando
               }
-              className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#e3e7ed] bg-white text-[#60379a] transition-colors hover:bg-[#f5f1fb] disabled:cursor-not-allowed disabled:text-slate-300"
+              className="flex h-8 w-8 items-center justify-center rounded-lg border border-line bg-surface text-accent transition-colors hover:bg-accent-soft disabled:cursor-not-allowed disabled:text-slate-300"
               aria-label="Página anterior"
             >
               <ChevronLeft className="h-4 w-4" />
             </button>
 
-            <span className="font-medium tabular-nums text-[#475467]">
-              Página {paginacion.page} de{' '}
-              {paginacion.totalPages}
+            <span className="font-medium tabular-nums text-body">
+              {paginacion.totalPages === 0 ? 'Sin páginas' : `Página ${paginacion.page} de ${paginacion.totalPages}`}
             </span>
 
             <button
@@ -396,7 +395,7 @@ export function DataTable<T>({
                   paginacion.totalPages ||
                 cargando
               }
-              className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#e3e7ed] bg-white text-[#60379a] transition-colors hover:bg-[#f5f1fb] disabled:cursor-not-allowed disabled:text-slate-300"
+              className="flex h-8 w-8 items-center justify-center rounded-lg border border-line bg-surface text-accent transition-colors hover:bg-accent-soft disabled:cursor-not-allowed disabled:text-slate-300"
               aria-label="Página siguiente"
             >
               <ChevronRight className="h-4 w-4" />

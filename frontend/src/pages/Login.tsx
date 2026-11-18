@@ -1,4 +1,4 @@
-﻿import {
+import {
   Activity,
   CheckCircle2,
   LockKeyhole,
@@ -9,7 +9,8 @@
   Microscope,
 } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
-import { Navigate, useLocation } from 'react-router-dom';
+import { Link, Navigate, useLocation } from 'react-router-dom';
+import { RegistroForm } from '../components/RegistroForm';
 import { Alert } from '../components/UI/Alert';
 import { Button } from '../components/UI/Button';
 import { Campo, Input } from '../components/UI/Form';
@@ -26,6 +27,7 @@ const ETAPAS = [
 export default function Login() {
   const { usuario, iniciarSesion } = useAuth();
   const location = useLocation();
+  const registro = location.pathname === '/registro';
 
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -131,13 +133,13 @@ export default function Login() {
               <LockKeyhole size={21} aria-hidden="true" />
             </span>
             <p className="login-form-overline">PORTAL DEL PERSONAL</p>
-            <h2>Bienvenido de nuevo</h2>
+            <h2>{registro ? 'Crear cuenta' : 'Bienvenido de nuevo'}</h2>
             <p className="login-form-description">
-              Ingrese sus credenciales para acceder al sistema.
+              {registro ? 'Solicite acceso para formar parte del laboratorio.' : 'Ingrese su usuario o correo y contraseña para acceder al sistema.'}
             </p>
           </div>
 
-          <form onSubmit={enviar} className="login-form" noValidate>
+          {registro ? <RegistroForm /> : <><form onSubmit={enviar} className="login-form" noValidate>
             {error && (
               <div className="login-error">
                 <Alert>{error}</Alert>
@@ -155,7 +157,8 @@ export default function Login() {
                 autoFocus
                 autoCapitalize="none"
                 spellCheck={false}
-                placeholder="Ingrese su usuario"
+                placeholder="Ingrese su usuario o correo"
+                maxLength={120}
                 required
                 disabled={enviando}
                 className="login-input"
@@ -217,14 +220,15 @@ export default function Login() {
               Sus credenciales se procesan de forma segura.
             </p>
           </form>
+          <p className="mt-5 text-center">¿Necesita acceso? <Link className="auth-link" to="/registro">Crear cuenta</Link></p></>}
 
-          <div className="login-access-note">
+          {!registro && <div className="login-access-note">
             <CheckCircle2 size={17} aria-hidden="true" />
             <p>
               <strong>Acceso controlado</strong>
               <span>Disponible para usuarios autorizados del laboratorio.</span>
             </p>
-          </div>
+          </div>}
         </div>
 
         <footer className="login-content-footer">

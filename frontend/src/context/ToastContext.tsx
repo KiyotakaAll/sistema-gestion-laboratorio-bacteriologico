@@ -2,6 +2,7 @@ import { CheckCircle2, Info, XCircle } from 'lucide-react';
 import { createContext, useCallback, useContext, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { registrarRegionAvisos } from '../components/UI/Modal';
+import { usePreferences } from './PreferencesContext';
 
 type Tipo = 'exito' | 'error' | 'info';
 
@@ -28,6 +29,7 @@ const ESTILO: Record<Tipo, string> = {
 const ICONO = { exito: CheckCircle2, error: XCircle, info: Info } as const;
 
 export function ToastProvider({ children }: { children: ReactNode }) {
+  const { preferencias } = usePreferences();
   const [avisos, setAvisos] = useState<Aviso[]>([]);
   const contador = useRef(0);
   const [region] = useState(() => document.createElement('div'));
@@ -35,6 +37,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   useLayoutEffect(() => registrarRegionAvisos(region), [region]);
 
   const publicar = useCallback((tipo: Tipo, mensaje: string) => {
+    if (tipo !== 'error' && !preferencias.avisosInformativos) return;
     contador.current += 1;
     const id = contador.current;
     setAvisos((actuales) => [...actuales, { id, tipo, mensaje }]);
@@ -43,7 +46,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       () => setAvisos((actuales) => actuales.filter((a) => a.id !== id)),
       tipo === 'error' ? 8000 : 4500,
     );
-  }, []);
+  }, [preferencias.avisosInformativos]);
 
   const api = useMemo<ToastApi>(
     () => ({

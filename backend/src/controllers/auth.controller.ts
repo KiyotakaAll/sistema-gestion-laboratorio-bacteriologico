@@ -1,7 +1,12 @@
 import * as authService from '../services/auth.service';
 import { AppError } from '../types/errors';
 import { asyncHandler } from '../utils/http';
-import { loginSchema } from '../validators/auth.validator';
+import { loginSchema, registroSchema } from '../validators/auth.validator';
+
+export const registro = asyncHandler(async (req, res) => {
+  const input = registroSchema.parse(req.body);
+  res.status(202).json({ data: await authService.registrarCuenta(input) });
+});
 
 export const login = asyncHandler(async (req, res) => {
   const input = loginSchema.parse(req.body);

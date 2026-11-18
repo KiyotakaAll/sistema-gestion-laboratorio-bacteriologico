@@ -7,7 +7,7 @@ import type {
 } from 'react';
 
 const BASE =
-  'block w-full rounded-lg border border-[#d8deea] bg-white px-3.5 text-sm text-[#30203f] outline-none transition-colors placeholder:text-[#9aa4b5] focus:border-[#7545ad] focus:ring-2 focus:ring-[#7545ad]/10 disabled:cursor-not-allowed disabled:bg-[#f5f7fa] disabled:text-[#8993a3]';
+  'ui-control block w-full rounded-lg border border-line bg-surface px-3.5 text-sm text-heading outline-none transition-colors placeholder:text-muted focus:border-accent focus:ring-2 focus:ring-accent/10 disabled:cursor-not-allowed disabled:bg-canvas disabled:text-muted';
 
 export function Input({
   className = '',
@@ -63,14 +63,14 @@ export function Campo({
 }: CampoProps) {
   return (
     <label className={`block ${className}`}>
-      <span className="mb-1.5 block text-[13px] font-semibold text-[#475467]">
+      <span className="mb-1.5 block text-[13px] font-semibold text-body">
         {etiqueta}
       </span>
 
       {children}
 
       {ayuda && (
-        <span className="mt-1.5 block text-xs text-[#8993a3]">
+        <span className="mt-1.5 block text-xs text-muted">
           {ayuda}
         </span>
       )}

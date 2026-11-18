@@ -63,7 +63,7 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-4">
-      <section aria-label="Muestras por estado" className="flex rounded border border-slate-300 bg-white">
+      <section aria-label="Muestras por estado" className="grid grid-cols-3 overflow-hidden rounded-xl border border-slate-300 bg-surface 2xl:flex">
         {FLUJO.map((estado, indice) => (
           <IndicadorMuestra
             key={estado}
@@ -74,7 +74,7 @@ export default function Dashboard() {
             <span className="block text-sm text-slate-600">{ETIQUETA_ESTADO_MUESTRA[estado]}</span>
             <span className="block font-serif text-3xl font-semibold tabular-nums text-violeta-900">{total ? total[estado] : '—'}</span>
             {indice < FLUJO.length - 1 && (
-              <ChevronRight className="absolute -right-2.5 top-1/2 z-10 h-5 w-5 -translate-y-1/2 rounded-full bg-white text-violeta-400" aria-hidden />
+              <ChevronRight className="absolute -right-2.5 top-1/2 z-10 h-5 w-5 -translate-y-1/2 rounded-full bg-surface text-violeta-400" aria-hidden />
             )}
           </IndicadorMuestra>
         ))}
@@ -100,8 +100,8 @@ export default function Dashboard() {
 
       {conteos.error && <p className="text-sm text-rose-700">{conteos.error}</p>}
 
-      <div className={`grid gap-4 ${veResultados ? 'grid-cols-5' : 'grid-cols-1'}`}>
-        <section className={veResultados ? 'col-span-3' : ''}>
+      <div className={`grid gap-4 ${veResultados ? 'grid-cols-1 2xl:grid-cols-5' : 'grid-cols-1'}`}>
+        <section className={veResultados ? 'min-w-0 2xl:col-span-3' : ''}>
           <h2 className="mb-1.5 font-serif text-base font-semibold text-slate-900">Muestras más recientes</h2>
           <DataTable
             columnas={columnasMuestras}
@@ -115,7 +115,7 @@ export default function Dashboard() {
           />
         </section>
         {veResultados && (
-          <section className="col-span-2">
+          <section className="min-w-0 2xl:col-span-2">
             <h2 className="mb-1.5 font-serif text-base font-semibold text-slate-900">Esperando validación</h2>
             <DataTable
               columnas={columnasPendientes}

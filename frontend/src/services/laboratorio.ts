@@ -21,6 +21,7 @@ import type {
   SolicitudDetalle,
   SolicitudLista,
   UsuarioSesion,
+  UsuarioAdministracion,
   WorklistItem,
 } from '../types/api';
 import { api } from './api';
@@ -35,9 +36,18 @@ interface Paginacion {
 }
 
 export const authApi = {
+  registrar: (cuerpo: { nombreCompleto: string; email: string; password: string; confirmacion: string }) =>
+    api.post<{ data: { mensaje: string } }>('/auth/register', cuerpo).then(datos),
   login: (username: string, password: string) =>
     api.post<{ data: SesionIniciada }>('/auth/login', { username, password }).then(datos),
   perfil: () => api.get<{ data: UsuarioSesion }>('/auth/me').then(datos),
+};
+
+export const usuariosApi = {
+  listar: (params: Paginacion & { q?: string; estado?: 'todos' | 'inactivos' | 'activos' }) =>
+    api.get<Paginado<UsuarioAdministracion>>('/usuarios', { params }).then(pagina),
+  activar: (id: number) =>
+    api.patch<{ data: { id: number; activo: true } }>(`/usuarios/${id}/activar`, {}).then(datos),
 };
 
 export const pacientesApi = {

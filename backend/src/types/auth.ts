@@ -10,6 +10,7 @@ export type RolNombre = (typeof ROLES)[number];
 export interface AuthenticatedUser {
   id: number;
   username: string;
+  email?: string;
   nombreCompleto: string;
   rol: RolNombre;
 }
