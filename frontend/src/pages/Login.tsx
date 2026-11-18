@@ -1,4 +1,5 @@
 ﻿import {
+  Activity,
   CheckCircle2,
   LockKeyhole,
   ArrowRight,
@@ -62,17 +63,18 @@ export default function Login() {
       <section className="login-brand" aria-label="Información del laboratorio">
         <div className="login-brand-inner">
           <a className="login-brand-logo" href="/" aria-label="Inicio del laboratorio">
-            <span className="login-logo-icon">
-              <Microscope size={25} strokeWidth={1.8} aria-hidden="true" />
-            </span>
-            <span className="login-brand-name">
-              Laboratorio
-              <strong>Bacteriológico</strong>
-            </span>
+            <img
+              className="login-brand-image"
+              src="/branding/labzen/LabZen_logo_aprobado_SIN_MODIFICACIONES.png"
+              alt="LabZen"
+              width={1536}
+              height={1024}
+            />
           </a>
 
           <div className="login-brand-message">
             <span className="login-eyebrow">
+              <Activity size={15} aria-hidden="true" />
               CIENCIA · PRECISIÓN · CONFIANZA
             </span>
 
@@ -106,6 +108,7 @@ export default function Login() {
           </div>
 
           <div className="login-brand-footer">
+            <ShieldCheck size={17} aria-hidden="true" />
             <span>Acceso exclusivo para personal autorizado</span>
           </div>
         </div>
@@ -114,15 +117,20 @@ export default function Login() {
       <section className="login-content">
         <div className="login-mobile-brand">
           <span className="login-logo-icon">
+            <Microscope size={23} aria-hidden="true" />
           </span>
-          <span>
-            
-            <strong></strong>
+          <span className="login-brand-name">
+            <strong>LabZen</strong>
+            Laboratorio bacteriológico
           </span>
         </div>
 
         <div className="login-form-wrapper">
-
+          <div className="login-form-heading">
+            <span className="login-form-icon">
+              <LockKeyhole size={21} aria-hidden="true" />
+            </span>
+            <p className="login-form-overline">PORTAL DEL PERSONAL</p>
             <h2>Bienvenido de nuevo</h2>
             <p className="login-form-description">
               Ingrese sus credenciales para acceder al sistema.
@@ -131,7 +139,7 @@ export default function Login() {
 
           <form onSubmit={enviar} className="login-form" noValidate>
             {error && (
-              <div className="login-error" role="alert">
+              <div className="login-error">
                 <Alert>{error}</Alert>
               </div>
             )}
@@ -210,9 +218,18 @@ export default function Login() {
             </p>
           </form>
 
+          <div className="login-access-note">
+            <CheckCircle2 size={17} aria-hidden="true" />
+            <p>
+              <strong>Acceso controlado</strong>
+              <span>Disponible para usuarios autorizados del laboratorio.</span>
+            </p>
+          </div>
+        </div>
+
         <footer className="login-content-footer">
           <span>Sistema de Gestión de Laboratorio Bacteriológico</span>
-          <span>Plataforma institucional</span>
+          <span>Precisión y trazabilidad en cada proceso</span>
         </footer>
       </section>
     </main>

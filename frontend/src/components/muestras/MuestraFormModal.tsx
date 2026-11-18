@@ -203,7 +203,7 @@ export function MuestraFormModal({
       ancho="lg"
       titulo="Registrar muestra"
       subtitulo="El código de barras único se genera al guardar."
-      onCerrar={onCerrar}
+      onCerrar={() => { if (!guardando) onCerrar(); }}
       pie={
         <>
           <Button

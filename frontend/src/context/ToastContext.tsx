@@ -1,5 +1,7 @@
 import { CheckCircle2, Info, XCircle } from 'lucide-react';
-import { createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
+import { registrarRegionAvisos } from '../components/UI/Modal';
 
 type Tipo = 'exito' | 'error' | 'info';
 
@@ -28,6 +30,9 @@ const ICONO = { exito: CheckCircle2, error: XCircle, info: Info } as const;
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [avisos, setAvisos] = useState<Aviso[]>([]);
   const contador = useRef(0);
+  const [region] = useState(() => document.createElement('div'));
+
+  useLayoutEffect(() => registrarRegionAvisos(region), [region]);
 
   const publicar = useCallback((tipo: Tipo, mensaje: string) => {
     contador.current += 1;
@@ -52,7 +57,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   return (
     <ToastContext.Provider value={api}>
       {children}
-      <div className="pointer-events-none fixed bottom-4 right-4 z-[60] flex w-96 flex-col gap-2" role="status" aria-live="polite">
+      {createPortal(<div className="pointer-events-none fixed bottom-4 right-4 z-[60] flex w-96 flex-col gap-2" role="status" aria-live="polite">
         {avisos.map((aviso) => {
           const Icono = ICONO[aviso.tipo];
           return (
@@ -65,7 +70,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             </div>
           );
         })}
-      </div>
+      </div>, region)}
     </ToastContext.Provider>
   );
 }

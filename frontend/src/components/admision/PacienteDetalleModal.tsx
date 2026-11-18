@@ -33,6 +33,7 @@ export function PacienteDetalleModal({ pacienteId, puedeEscribir, onCerrar, onCa
   const { datos: paciente, cargando, error, recargar } = useCarga(() => pacientesApi.obtener(pacienteId), [pacienteId]);
   const [editando, setEditando] = useState(false);
   const [nuevaSolicitud, setNuevaSolicitud] = useState(false);
+  const [guardandoSolicitud, setGuardandoSolicitud] = useState(false);
 
   const columnas = useMemo<Column<SolicitudFila>[]>(
     () => [
@@ -66,8 +67,8 @@ export function PacienteDetalleModal({ pacienteId, puedeEscribir, onCerrar, onCa
         ancho="xl"
         titulo={paciente ? nombrePaciente(paciente) : 'Paciente'}
         subtitulo={paciente ? `Cédula ${paciente.cedula}` : undefined}
-        onCerrar={onCerrar}
-        pie={<Button onClick={onCerrar}>Cerrar</Button>}
+        onCerrar={() => { if (!guardandoSolicitud) onCerrar(); }}
+        pie={<Button onClick={onCerrar} disabled={guardandoSolicitud}>Cerrar</Button>}
       >
         {error && <Alert>{error}</Alert>}
         {cargando && !paciente && <p className="text-slate-500">Cargando datos del paciente</p>}
@@ -102,6 +103,8 @@ export function PacienteDetalleModal({ pacienteId, puedeEscribir, onCerrar, onCa
               {nuevaSolicitud && (
                 <NuevaSolicitudForm
                   pacienteId={paciente.id}
+                  guardando={guardandoSolicitud}
+                  setGuardando={setGuardandoSolicitud}
                   onCancelar={() => setNuevaSolicitud(false)}
                   onCreada={(codigo) => {
                     toast.exito(`Solicitud ${codigo} creada. Ya puede registrar sus muestras.`);
@@ -139,12 +142,17 @@ export function PacienteDetalleModal({ pacienteId, puedeEscribir, onCerrar, onCa
   );
 }
 
-function NuevaSolicitudForm({ pacienteId, onCancelar, onCreada }: { pacienteId: number; onCancelar: () => void; onCreada: (codigo: string) => void }) {
+function NuevaSolicitudForm({ pacienteId, onCancelar, onCreada, guardando, setGuardando }: {
+  pacienteId: number;
+  onCancelar: () => void;
+  onCreada: (codigo: string) => void;
+  guardando: boolean;
+  setGuardando: (guardando: boolean) => void;
+}) {
   const [prioridad, setPrioridad] = useState<Prioridad>('RUTINA');
   const [medico, setMedico] = useState('');
   const [diagnostico, setDiagnostico] = useState('');
   const [observaciones, setObservaciones] = useState('');
-  const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [detalles, setDetalles] = useState<DetalleCampo[]>([]);
 
@@ -161,6 +169,7 @@ function NuevaSolicitudForm({ pacienteId, onCancelar, onCreada }: { pacienteId: 
         diagnosticoPresuntivo: opcional(diagnostico),
         observaciones: opcional(observaciones),
       });
+      setGuardando(false);
       onCreada(solicitud.codigo);
     } catch (e) {
       setError(mensajeDeError(e));
