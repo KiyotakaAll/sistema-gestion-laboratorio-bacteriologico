@@ -1,4 +1,15 @@
-import { FileCheck2, FlaskConical, LayoutDashboard, TestTubes, UserPlus, type LucideIcon } from 'lucide-react';
+
+import {
+  ClipboardCheck,
+  FlaskConical,
+  LayoutDashboard,
+  Microscope,
+  Settings2,
+  TestTubes,
+  UserRoundPlus,
+  type LucideIcon,
+} from 'lucide-react';
+
 import type { RolNombre } from '../types/api';
 
 export interface ItemNavegacion {
@@ -11,15 +22,26 @@ export interface ItemNavegacion {
   roles: RolNombre[];
 }
 
-const TODOS: RolNombre[] = ['ADMINISTRADOR', 'RECEPCIONISTA', 'BACTERIOLOGO', 'VALIDADOR'];
+const TODOS: RolNombre[] = [
+  'ADMINISTRADOR',
+  'RECEPCIONISTA',
+  'BACTERIOLOGO',
+  'VALIDADOR',
+];
 
 export const NAVEGACION: ItemNavegacion[] = [
-  { ruta: '/dashboard', etiqueta: 'Panel general', titulo: 'Panel general', icono: LayoutDashboard, roles: TODOS },
+  {
+    ruta: '/dashboard',
+    etiqueta: 'Panel general',
+    titulo: 'Panel general',
+    icono: LayoutDashboard,
+    roles: TODOS,
+  },
   {
     ruta: '/admision',
     etiqueta: 'Admisión de pacientes',
     titulo: 'Admisión de pacientes y solicitudes',
-    icono: UserPlus,
+    icono: UserRoundPlus,
     roles: ['ADMINISTRADOR', 'RECEPCIONISTA'],
   },
   {
@@ -40,9 +62,16 @@ export const NAVEGACION: ItemNavegacion[] = [
     ruta: '/validacion',
     etiqueta: 'Consulta y validación',
     titulo: 'Consulta y validación de resultados',
-    icono: FileCheck2,
+    icono: ClipboardCheck,
     roles: ['ADMINISTRADOR', 'BACTERIOLOGO', 'VALIDADOR'],
   },
+  {
+    ruta: '/configuracion',
+    etiqueta: 'Configuración',
+    titulo: 'Configuración y preferencias',
+    icono: Settings2,
+    roles: TODOS,
+},
 ];
 
 export function rolesDeRuta(ruta: string): RolNombre[] {
@@ -55,3 +84,5 @@ export const ETIQUETA_ROL: Record<RolNombre, string> = {
   BACTERIOLOGO: 'Bacteriólogo',
   VALIDADOR: 'Validador',
 };
+
+export const ICONO_LABORATORIO = Microscope;
