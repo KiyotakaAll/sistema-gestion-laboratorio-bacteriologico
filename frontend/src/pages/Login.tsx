@@ -1,4 +1,5 @@
 ﻿import {
+  Activity,
   CheckCircle2,
   LockKeyhole,
   ArrowRight,
@@ -73,6 +74,7 @@ export default function Login() {
 
           <div className="login-brand-message">
             <span className="login-eyebrow">
+              <Activity size={15} aria-hidden="true" />
               CIENCIA · PRECISIÓN · CONFIANZA
             </span>
 
@@ -106,6 +108,7 @@ export default function Login() {
           </div>
 
           <div className="login-brand-footer">
+            <ShieldCheck size={17} aria-hidden="true" />
             <span>Acceso exclusivo para personal autorizado</span>
           </div>
         </div>
@@ -114,15 +117,20 @@ export default function Login() {
       <section className="login-content">
         <div className="login-mobile-brand">
           <span className="login-logo-icon">
+            <Microscope size={23} aria-hidden="true" />
           </span>
-          <span>
-
-            <strong></strong>
+          <span className="login-brand-name">
+            Laboratorio
+            <strong>Bacteriológico</strong>
           </span>
         </div>
 
         <div className="login-form-wrapper">
           <div className="login-form-heading">
+            <span className="login-form-icon">
+              <LockKeyhole size={21} aria-hidden="true" />
+            </span>
+            <p className="login-form-overline">PORTAL DEL PERSONAL</p>
             <h2>Bienvenido de nuevo</h2>
             <p className="login-form-description">
               Ingrese sus credenciales para acceder al sistema.
@@ -209,6 +217,14 @@ export default function Login() {
               Sus credenciales se procesan de forma segura.
             </p>
           </form>
+
+          <div className="login-access-note">
+            <CheckCircle2 size={17} aria-hidden="true" />
+            <p>
+              <strong>Acceso controlado</strong>
+              <span>Disponible para usuarios autorizados del laboratorio.</span>
+            </p>
+          </div>
         </div>
 
         <footer className="login-content-footer">

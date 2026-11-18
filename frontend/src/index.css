@@ -292,7 +292,13 @@
 .login-form {
   display: flex;
   flex-direction: column;
+  width: 100%;
   gap: 22px;
+}
+
+.login-field {
+  width: 100%;
+  min-width: 0;
 }
 
 .login-field > span:first-child {
@@ -303,6 +309,8 @@
 }
 
 .login-input {
+  box-sizing: border-box;
+  width: 100%;
   height: 46px !important;
   padding: 0 13px !important;
   border-color: #d9dee7 !important;
@@ -324,6 +332,7 @@
 
 .login-password-wrapper {
   position: relative;
+  width: 100%;
 }
 
 .login-password-input {
@@ -358,8 +367,10 @@
   opacity: 0.5;
 }
 
+.login-submit:focus-visible,
 .login-password-toggle:focus-visible {
-  outline-offset: -2px;
+  outline: 3px solid #a98bd0;
+  outline-offset: 3px;
 }
 
 .login-submit {
@@ -375,12 +386,14 @@
   color: #fff !important;
   font-size: 13px !important;
   font-weight: 650 !important;
+  box-shadow: 0 3px 8px rgb(65 36 97 / 12%);
   transition: background 150ms ease, transform 150ms ease;
 }
 
 .login-submit:hover:not(:disabled) {
   border-color: #4a2b76 !important;
   background: #4a2b76 !important;
+  box-shadow: 0 5px 12px rgb(65 36 97 / 18%);
 }
 
 .login-submit:active:not(:disabled) {
@@ -402,8 +415,8 @@
   justify-content: center;
   gap: 8px;
   margin: 0;
-  color: #788294;
-  font-size: 11px;
+  color: #68758a;
+  font-size: 13px;
   line-height: 1.7;
   text-align: center;
 }
@@ -569,7 +582,7 @@
   }
 }
 
-@media (max-height: 760px) and (min-width: 761px) {
+@media (max-height: 800px) and (min-width: 761px) {
   .login-brand-inner {
     padding-top: 24px;
     padding-bottom: 20px;
@@ -626,325 +639,3 @@
     transition-duration: 0.01ms !important;
   }
 }
-
-
-/* =========================================
-   MEJORA VISUAL DEL LOGIN
-   ========================================= */
-
-/* Panel principal */
-.login-content {
-  box-sizing: border-box;
-  min-width: 0;
-  padding: clamp(28px, 5vw, 72px);
-}
-
-/* Formulario más amplio y centrado */
-.login-form-wrapper {
-  width: 100%;
-  max-width: 480px;
-  margin-inline: auto;
-}
-
-/* Encabezado limpio y alineado con los campos */
-.login-form-heading {
-  margin-bottom: 32px;
-  text-align: left;
-}
-
-.login-form-heading h2 {
-  margin: 0 0 12px;
-  color: #30203f;
-  font-family: "Source Serif 4", Georgia, serif;
-  font-size: clamp(30px, 2.6vw, 42px);
-  font-weight: 700;
-  line-height: 1.15;
-  letter-spacing: -0.035em;
-}
-
-.login-form-description {
-  margin: 0;
-  color: #68758a;
-  font-size: 15px;
-  line-height: 1.7;
-}
-
-/* Los elementos superiores ya se retiraron del diseño */
-.login-form-icon,
-.login-form-overline {
-  display: none;
-}
-
-/* Campos de ancho uniforme */
-.login-form {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-.login-field {
-  width: 100%;
-  min-width: 0;
-}
-
-.login-field input,
-.login-input {
-  box-sizing: border-box;
-  width: 100%;
-  min-height: 54px;
-  border-radius: 10px;
-  border-color: #d8dce7;
-  background: #fff;
-  font-size: 15px;
-  transition: border-color 160ms ease, box-shadow 160ms ease;
-}
-
-.login-field input:focus,
-.login-input:focus {
-  border-color: #7545ad;
-  outline: none;
-  box-shadow: 0 0 0 3px rgb(117 69 173 / 14%);
-}
-
-.login-password-wrapper {
-  position: relative;
-  width: 100%;
-}
-
-.login-password-input {
-  padding-right: 48px;
-}
-
-.login-password-toggle {
-  cursor: pointer;
-}
-
-/* Botón principal: violeta institucional */
-.login-submit {
-  width: 100%;
-  min-height: 56px;
-  margin-top: 4px;
-  border-radius: 10px;
-  background-color: #60379a;
-  color: #fff;
-  font-size: 16px;
-  font-weight: 600;
-  transition: background-color 160ms ease, transform 160ms ease;
-}
-
-.login-submit:hover:not(:disabled) {
-  background-color: #4d287f;
-}
-
-.login-submit:active:not(:disabled) {
-  transform: translateY(1px);
-}
-
-.login-submit:focus-visible,
-.login-password-toggle:focus-visible {
-  outline: 3px solid #a98bd0;
-  outline-offset: 3px;
-}
-
-/* Aviso de seguridad discreto */
-.login-security-note {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 9px;
-  margin: 2px 0 0;
-  color: #748197;
-  font-size: 13px;
-  line-height: 1.6;
-  text-align: center;
-}
-
-.login-security-note svg {
-  flex-shrink: 0;
-  color: #43856c;
-}
-
-/* Recuperar el icono del microscopio */
-.login-logo-icon {
-  display: inline-flex;
-  flex-shrink: 0;
-  align-items: center;
-  justify-content: center;
-  color: #eee3ff;
-}
-
-.login-logo-icon svg {
-  display: block;
-  visibility: visible;
-  opacity: 1;
-}
-
-/* Adaptación a pantallas pequeñas */
-@media (max-width: 760px) {
-  .login-content {
-    padding: 28px 24px;
-  }
-
-  .login-form-wrapper {
-    max-width: 440px;
-  }
-
-  .login-form-heading {
-    margin-bottom: 26px;
-  }
-
-  .login-form-heading h2 {
-    font-size: 32px;
-  }
-}
-
-@media (max-width: 380px) {
-  .login-content {
-    padding-inline: 18px;
-  }
-
-  .login-form-heading h2 {
-    font-size: 29px;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .login-field input,
-  .login-input,
-  .login-submit {
-    transition: none;
-  }
-}
-
-
-/* Ajuste final de proporciones del formulario */
-.login-form-wrapper {
-  width: 100%;
-  max-width: 470px;
-  margin-inline: auto;
-}
-
-.login-form-heading {
-  margin-bottom: 30px;
-  text-align: left;
-}
-
-.login-form-heading h2 {
-  margin-bottom: 12px;
-  color: #30203f;
-  font-family: "Source Serif 4", Georgia, serif;
-  font-size: clamp(32px, 2.5vw, 40px);
-  font-weight: 700;
-  line-height: 1.15;
-  letter-spacing: -0.035em;
-}
-
-.login-form-description {
-  max-width: 420px;
-  font-size: 15px;
-  line-height: 1.65;
-}
-
-.login-form {
-  gap: 18px;
-}
-
-.login-field input,
-.login-input {
-  min-height: 52px;
-  border-radius: 9px;
-}
-
-.login-submit {
-  min-height: 54px;
-  margin-top: 2px;
-  background-color: #60379a;
-}
-
-.login-security-note {
-  margin-top: 2px;
-  font-size: 13px;
-}
-
-/* El icono debe conservar su espacio y mostrar el SVG */
-.login-logo-icon {
-  width: 62px;
-  height: 62px;
-  border: 1px solid rgb(235 220 255 / 22%);
-  border-radius: 16px;
-  background: rgb(255 255 255 / 7%);
-}
-
-.login-logo-icon svg {
-  width: 26px;
-  height: 26px;
-  display: block;
-  flex-shrink: 0;
-}
-
-/* En móvil, evitar un encabezado demasiado grande */
-@media (max-width: 760px) {
-  .login-form-heading h2 {
-    font-size: 32px;
-  }
-
-  .login-logo-icon {
-    width: 48px;
-    height: 48px;
-    border-radius: 13px;
-  }
-}
-
-
-/* Refinamiento de la cabecera del formulario */
-.login-form-wrapper {
-  max-width: 460px;
-}
-
-.login-form-heading {
-  margin-bottom: 26px;
-}
-
-.login-form-heading h2 {
-  color: #30203f;
-  font-family: "Source Serif 4", Georgia, serif;
-  font-size: clamp(34px, 2.6vw, 40px);
-  font-weight: 700;
-  line-height: 1.2;
-  letter-spacing: -0.7px;
-  margin: 0 0 12px;
-}
-
-.login-form-description {
-  color: #68758a;
-  font-size: 15px;
-  line-height: 1.65;
-  max-width: 390px;
-}
-
-.login-form {
-  gap: 17px;
-}
-
-.login-field input,
-.login-input {
-  min-height: 50px;
-}
-
-.login-submit {
-  min-height: 54px;
-  background-color: #60379a;
-  box-shadow: 0 3px 8px rgb(65 36 97 / 12%);
-}
-
-.login-submit:hover:not(:disabled) {
-  background-color: #4d287f;
-  box-shadow: 0 5px 12px rgb(65 36 97 / 18%);
-}
-
-.login-security-note {
-  margin-top: 3px;
-  color: #68758a;
-}
-
