@@ -1,4 +1,5 @@
 import type { EstadoMuestra, EstadoResultado, Prioridad, Sensibilidad } from '../../types/api';
+import { useInternalUI } from '../../context/InternalUIContext';
 
 type Tono = 'gris' | 'cielo' | 'violeta' | 'verde' | 'ambar' | 'rojo' | 'rosa';
 
@@ -13,9 +14,10 @@ const TONOS: Record<Tono, { caja: string; punto: string }> = {
 };
 
 export function Badge({ tono, children }: { tono: Tono; children: string }) {
+  const interno = useInternalUI();
   const estilo = TONOS[tono];
   return (
-    <span className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-sm border px-1.5 text-xs font-semibold leading-5 ${estilo.caja}`}>
+    <span className={`${interno ? 'lz-badge ' : ''}inline-flex items-center gap-1.5 whitespace-nowrap rounded-sm border px-1.5 text-xs font-semibold leading-5 ${estilo.caja}`}>
       <span className={`h-1.5 w-1.5 rounded-full ${estilo.punto}`} aria-hidden />
       {children}
     </span>

@@ -1,5 +1,5 @@
 
-import { Search } from 'lucide-react';
+import { IconoBuscar } from '../icons/LabZenIcon';
 import { useEffect, useState, type FormEvent } from 'react';
 import { useToast } from '../../context/ToastContext';
 import { useCarga } from '../../hooks/useCarga';
@@ -26,6 +26,8 @@ import {
 import { Alert } from '../UI/Alert';
 import { Button } from '../UI/Button';
 import { Campo, Input } from '../UI/Form';
+import { Combobox } from '../UI/Combobox';
+import { DateTimePicker } from '../UI/DateTimePicker';
 import { Modal } from '../UI/Modal';
 
 interface Props {
@@ -295,7 +297,7 @@ export function MuestraFormModal({
                   cargando={buscando}
                   disabled={!cedula.trim()}
                   icono={
-                    <Search
+                    <IconoBuscar
                       className="h-4 w-4"
                       aria-hidden
                     />
@@ -374,20 +376,8 @@ export function MuestraFormModal({
           </legend>
 
           <Campo etiqueta="Tipo de muestra">
-            <Input
-              value={tipoMuestra}
-              onChange={(e) =>
-                setTipoMuestra(e.target.value)
-              }
-              list="tipos-muestra"
-              required
-            />
-
-            <datalist id="tipos-muestra">
-              {TIPOS_FRECUENTES.map((t) => (
-                <option key={t} value={t} />
-              ))}
-            </datalist>
+            <Combobox value={tipoMuestra} onValueChange={setTipoMuestra} aria-label="Tipo de muestra"
+              options={TIPOS_FRECUENTES.map((t) => ({ value: t, label: t }))} allowFreeText required />
           </Campo>
 
           <Campo etiqueta="Sitio anatómico">
@@ -400,15 +390,7 @@ export function MuestraFormModal({
           </Campo>
 
           <Campo etiqueta="Fecha y hora de toma">
-            <Input
-              type="datetime-local"
-              value={fechaToma}
-              max={ahoraParaInput()}
-              onChange={(e) =>
-                setFechaToma(e.target.value)
-              }
-              required
-            />
+            <DateTimePicker value={fechaToma} onValueChange={setFechaToma} max={ahoraParaInput()} required />
           </Campo>
         </fieldset>
 

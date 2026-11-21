@@ -7,6 +7,7 @@ import { ToastProvider } from './context/ToastContext';
 import { PreferencesProvider } from './context/PreferencesContext';
 import './index.css';
 import './theme.css';
+import './internal.css';
 
 const raiz = document.getElementById('root');
 if (!raiz) {

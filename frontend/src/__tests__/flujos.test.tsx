@@ -99,7 +99,7 @@ describe('Acceso y roles', () => {
 
     expect(
       await screen.findByRole('heading', {
-        name: 'Bienvenido de nuevo',
+        name: 'Tu espacio de trabajo',
       }),
     ).toBeInTheDocument();
   });
@@ -263,6 +263,13 @@ describe('Worklist: carga de resultado con antibiograma', () => {
     await u.click(screen.getByRole('button', { name: /Agregar antibiótico/ }));
     await u.type(screen.getByLabelText('Antibiótico'), 'Ciprofloxacino');
     await u.click(screen.getByRole('radio', { name: 'R' }));
+    await u.keyboard('{ArrowLeft}');
+    expect(screen.getByRole('radio', { name: 'I' })).toHaveFocus();
+    expect(screen.getByRole('radio', { name: 'I' })).toHaveAttribute('aria-checked', 'true');
+    await u.keyboard('{Home}');
+    expect(screen.getByRole('radio', { name: 'S' })).toHaveAttribute('aria-checked', 'true');
+    await u.keyboard('{End}');
+    expect(screen.getByRole('radio', { name: 'R' })).toHaveFocus();
     await u.type(screen.getByLabelText('Halo en milímetros'), '12');
     await u.click(screen.getByRole('button', { name: 'Guardar resultado' }));
 
@@ -290,7 +297,7 @@ describe('Consulta de resultados registrados', () => {
       entrar('/validacion', rol);
       const estadoInicial = rol === 'BACTERIOLOGO' ? '' : 'PENDIENTE_VALIDACION';
       expect(await screen.findByRole('combobox', { name: 'Estado del resultado' })).toHaveValue(estadoInicial);
-      expect(screen.getByRole('heading', { level: 1, name: 'Consulta y validación de resultados' })).toBeInTheDocument();
+      expect(screen.getByRole('heading', { level: 1, name: 'Resultados del laboratorio' })).toBeInTheDocument();
       expect(screen.getByRole('heading', {
         level: 2, name: rol === 'VALIDADOR' ? 'Validación de resultados' : 'Consulta de resultados',
       })).toBeInTheDocument();
@@ -345,7 +352,8 @@ describe('Consulta de resultados registrados', () => {
         entrar('/validacion', rol);
         const u = userEvent.setup();
         const filtro = await screen.findByRole('combobox', { name: 'Estado del resultado' });
-        await u.selectOptions(filtro, estado);
+        await u.click(filtro);
+        await u.click(await screen.findByRole('option', { name: estado === 'VALIDADO' ? 'Validados' : 'Pendientes de validación' }));
         await waitFor(() => expect(resultadosApi.listar).toHaveBeenLastCalledWith({ estado, page: 1, pageSize: 25 }));
         await u.click(await screen.findByText('Pérez, Ana'));
         const detalle = await screen.findByRole('dialog');

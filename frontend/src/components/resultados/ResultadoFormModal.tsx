@@ -10,6 +10,7 @@ import { EstadoResultadoBadge, ETIQUETA_SENSIBILIDAD, PrioridadBadge } from '../
 import { Button } from '../UI/Button';
 import { Dato, Datos, Seccion } from '../UI/Dato';
 import { Campo, Input, Textarea } from '../UI/Form';
+import { Combobox } from '../UI/Combobox';
 import { Modal } from '../UI/Modal';
 import { ResultadoLectura } from './ResultadoLectura';
 
@@ -157,12 +158,12 @@ export function ResultadoFormModal({ item, puedeEditar, onCerrar, onGuardado }: 
             <p className="text-slate-500">Todavía no se cargó el resultado de este examen.</p>
           )
         ) : (
-          <form id={ID_FORMULARIO} onSubmit={enviar} className="space-y-3">
+          <form id={ID_FORMULARIO} onSubmit={enviar} className="lz-results-form">
             {existente && (
               <Alert tipo="aviso">Al guardar la corrección, usted pasa a ser quien registra este resultado y otra persona deberá validarlo.</Alert>
             )}
             {error && <Alert detalles={detalles}>{error}</Alert>}
-            <div className="grid grid-cols-2 gap-3">
+            <div className="lz-form-section grid grid-cols-2 gap-4">
               <Campo etiqueta="Hallazgo microscópico (Gram)">
                 <Textarea value={hallazgoGram} onChange={(e) => setHallazgoGram(e.target.value)} rows={3} placeholder="Por ejemplo: bacilos Gram negativos, abundantes leucocitos" />
               </Campo>
@@ -177,25 +178,24 @@ export function ResultadoFormModal({ item, puedeEditar, onCerrar, onGuardado }: 
               </Campo>
             </div>
 
-            <div>
-              <div className="mb-1 flex items-center justify-between">
+            <section className="lz-antibiogram" aria-label="Antibiograma">
+              <div className="lz-antibiogram-heading">
                 <h4 className="font-serif text-base font-semibold text-slate-900">Antibiograma</h4>
                 <Button tamano="sm" icono={<Plus className="h-3.5 w-3.5" aria-hidden />} onClick={() => setFilas((a) => [...a, { clave: nuevaClave(), antibiotico: '', sensibilidad: 'S', haloMm: '' }])}>
                   Agregar antibiótico
                 </Button>
               </div>
-              <datalist id="lista-antibioticos">
-                {ANTIBIOTICOS.map((a) => (
-                  <option key={a} value={a} />
-                ))}
-              </datalist>
+              <p className="lz-section-description">Registra el antibiótico, la interpretación y el halo medido. S: sensible · I: intermedio · R: resistente.</p>
               {filas.length === 0 ? (
                 <p className="text-xs text-slate-500">Sin antibiograma. Agregue antibióticos si se aisló una bacteria.</p>
               ) : (
-                <ul className="space-y-1.5">
+                <ul className="lz-antibiogram-list">
                   {filas.map((fila) => (
-                    <li key={fila.clave} className="grid grid-cols-[1fr_auto_6rem_auto] items-center gap-2">
-                      <Input aria-label="Antibiótico" list="lista-antibioticos" value={fila.antibiotico} onChange={(e) => actualizarFila(fila.clave, { antibiotico: e.target.value })} placeholder="Antibiótico" />
+                    <li key={fila.clave} className="lz-antibiogram-row">
+                      <div className="lz-antibiotic-field"><span>Antibiótico</span>
+                      <Combobox aria-label="Antibiótico" value={fila.antibiotico} onValueChange={(value) => actualizarFila(fila.clave, { antibiotico: value })} options={ANTIBIOTICOS.map((a) => ({ value: a, label: a }))} allowFreeText placeholder="Antibiótico" />
+                      </div>
+                      <div className="lz-interpretation-field"><span>Interpretación</span>
                       <div role="radiogroup" aria-label="Interpretación" className="flex overflow-hidden rounded-sm border border-slate-300">
                         {OPCIONES_SENSIBILIDAD.map((opcion) => {
                           const activa = fila.sensibilidad === opcion;
@@ -206,8 +206,18 @@ export function ResultadoFormModal({ item, puedeEditar, onCerrar, onGuardado }: 
                               type="button"
                               role="radio"
                               aria-checked={activa}
+                              tabIndex={activa ? 0 : -1}
                               title={ETIQUETA_SENSIBILIDAD[opcion]}
                               onClick={() => actualizarFila(fila.clave, { sensibilidad: opcion })}
+                              onKeyDown={(event) => {
+                                if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(event.key)) return;
+                                event.preventDefault();
+                                const indice = OPCIONES_SENSIBILIDAD.indexOf(opcion);
+                                const siguiente = event.key === 'Home' ? 0 : event.key === 'End' ? 2
+                                  : (indice + (event.key === 'ArrowLeft' || event.key === 'ArrowUp' ? 2 : 1)) % 3;
+                                actualizarFila(fila.clave, { sensibilidad: OPCIONES_SENSIBILIDAD[siguiente]! });
+                                event.currentTarget.parentElement?.querySelectorAll<HTMLButtonElement>('[role="radio"]')[siguiente]?.focus();
+                              }}
                               className={`h-8 w-9 text-sm font-bold ${activa ? `${color} text-white` : 'bg-surface text-slate-600 hover:bg-slate-100'}`}
                             >
                               {opcion}
@@ -215,15 +225,18 @@ export function ResultadoFormModal({ item, puedeEditar, onCerrar, onGuardado }: 
                           );
                         })}
                       </div>
+                      </div>
+                      <label className="lz-halo-field"><span>Halo (mm)</span>
                       <Input aria-label="Halo en milímetros" type="number" min={0} max={99.9} step={0.1} value={fila.haloMm} onChange={(e) => actualizarFila(fila.clave, { haloMm: e.target.value })} placeholder="Halo mm" />
-                      <button type="button" aria-label="Quitar antibiótico" onClick={() => setFilas((a) => a.filter((f) => f.clave !== fila.clave))} className="rounded-sm p-1.5 text-slate-500 hover:bg-rose-50 hover:text-rose-700">
+                      </label>
+                      <button type="button" aria-label="Quitar antibiótico" onClick={() => setFilas((a) => a.filter((f) => f.clave !== fila.clave))} className="lz-remove-antibiotic text-slate-500 hover:bg-rose-50 hover:text-rose-700">
                         <Trash2 className="h-4 w-4" />
                       </button>
                     </li>
                   ))}
                 </ul>
               )}
-            </div>
+            </section>
           </form>
         )}
       </Seccion>

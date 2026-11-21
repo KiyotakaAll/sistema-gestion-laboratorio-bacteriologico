@@ -1,4 +1,5 @@
-import { Plus } from 'lucide-react';
+import { ArrowRight, RotateCcw } from 'lucide-react';
+import { IconoNuevo, IconoMuestras } from '../components/icons/LabZenIcon';
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { MuestraDetalleModal } from '../components/muestras/MuestraDetalleModal';
@@ -6,7 +7,10 @@ import { MuestraFormModal } from '../components/muestras/MuestraFormModal';
 import { EstadoMuestraBadge, ETIQUETA_ESTADO_MUESTRA, PrioridadBadge } from '../components/UI/Badge';
 import { Button } from '../components/UI/Button';
 import { DataTable, type Column } from '../components/UI/DataTable';
-import { Select } from '../components/UI/Form';
+import { PageHeader } from '../components/UI/PageHeader';
+import { WorkflowOverview } from '../components/UI/WorkflowOverview';
+import { DatePicker } from '../components/UI/DatePicker';
+import { Campo, Select } from '../components/UI/Form';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { useCarga } from '../hooks/useCarga';
@@ -20,7 +24,7 @@ const ESTADOS = Object.keys(ETIQUETA_ESTADO_MUESTRA) as EstadoMuestra[];
 const PATRON_CODIGO = /^[A-Z0-9-]{8,30}$/;
 
 const claseFiltro =
-  'h-7 rounded-sm border border-slate-300 bg-surface px-2 text-sm placeholder:text-slate-400 focus:border-violeta-500';
+  'ui-control h-11 w-full rounded-lg border border-line bg-surface px-3 text-sm text-heading placeholder:text-muted';
 
 export default function RecepcionMuestras() {
   const { tieneRol } = useAuth();
@@ -109,7 +113,20 @@ export default function RecepcionMuestras() {
 
   return (
     <>
-      <DataTable
+      <PageHeader contexto="Recepción y trazabilidad" titulo="Recepción de muestras"
+        descripcion="Identifica cada muestra, verifica su recepción y sigue su recorrido por el laboratorio."
+        acciones={puedeRegistrar ? <Button variante="primario" icono={<IconoNuevo size={17} aria-hidden />} onClick={() => setRegistrando(true)}>Registrar muestra</Button> : undefined} />
+      <WorkflowOverview titulo="Flujo de una muestra" descripcion="Desde el registro hasta el procesamiento, cada etapa queda identificada.">
+        <ol className="lz-sample-journey" aria-label="Etapas de una muestra">
+          {['Registrada', 'Receptada', 'En procesamiento', 'Procesada'].map((etapa, i) => <li key={etapa}>
+            <span className="lz-journey-icon"><IconoMuestras size={17} aria-hidden /></span><span>{etapa}</span>
+            {i < 3 && <ArrowRight size={16} aria-hidden />}
+          </li>)}
+        </ol>
+        <p className="lz-section-description">Las muestras rechazadas conservan su motivo e historial de trazabilidad.</p>
+      </WorkflowOverview>
+      <DataTable titulo="Registro y trazabilidad" descripcion="Busca por código de barras o acota el listado con los filtros."
+
         columnas={columnas}
         filas={datos?.data ?? []}
         clave={(m) => m.id}
@@ -120,34 +137,22 @@ export default function RecepcionMuestras() {
         mensajeVacio="No hay muestras que coincidan con los filtros."
         paginacion={datos ? { page: datos.page, totalPages: datos.totalPages, total: datos.total, onCambiarPagina: setPagina } : undefined}
         barra={
-          <>
-            <Select className="!h-7 w-44" aria-label="Filtrar por estado de la muestra" value={estado} onChange={(e) => alFiltrar(setEstado)(e.target.value as EstadoMuestra | '')}>
-              <option value="">Todos los estados</option>
-              {ESTADOS.map((e) => (
-                <option key={e} value={e}>
-                  {ETIQUETA_ESTADO_MUESTRA[e]}
-                </option>
-              ))}
-            </Select>
-            <input
-              className={`${claseFiltro} w-52 font-mono text-xs`}
-              aria-label="Filtrar por código de barras"
-              placeholder="Escanear o escribir código"
-              value={codigo}
-              onChange={(e) => alFiltrar(setCodigo)(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') void abrirPorCodigo();
-              }}
-            />
-            <input className={`${claseFiltro} w-36`} aria-label="Filtrar por cédula" placeholder="Cédula" value={cedula} onChange={(e) => alFiltrar(setCedula)(e.target.value)} />
-            <input className={claseFiltro} type="date" aria-label="Toma desde" value={desde} onChange={(e) => alFiltrar(setDesde)(e.target.value)} />
-            <input className={claseFiltro} type="date" aria-label="Toma hasta" value={hasta} onChange={(e) => alFiltrar(setHasta)(e.target.value)} />
-            {puedeRegistrar && (
-              <Button tamano="sm" variante="primario" icono={<Plus className="h-3.5 w-3.5" aria-hidden />} onClick={() => setRegistrando(true)}>
-                Registrar muestra
-              </Button>
-            )}
-          </>
+          <div className="lz-filters-grid">
+            <Campo etiqueta="Estado de la muestra">
+              <Select aria-label="Filtrar por estado de la muestra" value={estado} onValueChange={(value) => alFiltrar(setEstado)(value as EstadoMuestra | '')}>
+                <option value="">Todos los estados</option>
+                {ESTADOS.map((e) => <option key={e} value={e}>{ETIQUETA_ESTADO_MUESTRA[e]}</option>)}
+              </Select>
+            </Campo>
+            <Campo etiqueta="Código de barras">
+              <input className={`${claseFiltro} font-mono text-xs`} aria-label="Filtrar por código de barras" placeholder="Escanear o escribir código" value={codigo}
+                onChange={(e) => alFiltrar(setCodigo)(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') void abrirPorCodigo(); }} />
+            </Campo>
+            <Campo etiqueta="Cédula"><input className={claseFiltro} aria-label="Filtrar por cédula" placeholder="Buscar identificación" value={cedula} onChange={(e) => alFiltrar(setCedula)(e.target.value)} /></Campo>
+            <Campo etiqueta="Toma desde"><DatePicker aria-label="Toma desde" value={desde} onValueChange={alFiltrar(setDesde)} /></Campo>
+            <Campo etiqueta="Toma hasta"><DatePicker aria-label="Toma hasta" value={hasta} onValueChange={alFiltrar(setHasta)} /></Campo>
+            <Button variante="fantasma" icono={<RotateCcw size={15} aria-hidden />} onClick={() => { setEstado(''); setCodigo(''); setCedula(''); setDesde(''); setHasta(''); setPagina(1); }}>Limpiar filtros</Button>
+          </div>
         }
       />
 
