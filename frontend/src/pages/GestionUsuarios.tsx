@@ -1,3 +1,4 @@
+import { PageHeader } from '../components/UI/PageHeader';
 import { RefreshCw, UserCheck } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ETIQUETA_ROL } from '../components/navigation';
@@ -73,27 +74,24 @@ export default function GestionUsuarios() {
   }
 
   return <div className="space-y-4">
-    <div className="flex flex-wrap items-start justify-between gap-4">
-      <div>
-        <h2 className="font-serif text-2xl font-semibold text-heading">Cuentas del laboratorio</h2>
-        <p className="mt-2 max-w-3xl text-muted">Revise la identidad del solicitante antes de activar su cuenta. Las cuentas registradas desde Login quedan inactivas con el rol de recepción.</p>
-        <p className="mt-1 text-xs text-muted">La activación conserva el rol asignado. Esta pantalla no activa cuentas administrativas ni modifica permisos.</p>
-      </div>
-      <Button onClick={recargar} disabled={cargando || activando} icono={<RefreshCw size={16} aria-hidden />}>Actualizar lista</Button>
-    </div>
+    <PageHeader contexto="Acceso institucional" titulo="Cuentas del laboratorio"
+      descripcion="Revisa las solicitudes de acceso y gestiona la activación del personal autorizado."
+      acciones={<Button onClick={recargar} disabled={cargando || activando} icono={<RefreshCw size={16} aria-hidden />}>Actualizar lista</Button>} />
+    <div className="lz-notice"><UserCheck size={20} aria-hidden /><div><strong>Verifica la identidad antes de activar</strong>
+      <p>Las cuentas registradas desde Login quedan inactivas con el rol de recepción. La activación conserva el rol asignado. Esta pantalla no activa cuentas administrativas ni modifica permisos.</p></div></div>
     {exito && <Alert tipo="info">{exito}</Alert>}
-    <div className="flex flex-wrap items-end gap-4">
+    <DataTable titulo="Personal del laboratorio" descripcion="Cuentas existentes y solicitudes pendientes de activación."
+      barra={<div className="lz-user-filters">
       <label className="block w-full max-w-sm"><span className="mb-1.5 block font-semibold">Buscar usuarios</span>
         <Input type="search" placeholder="Nombre, correo o usuario" value={busqueda} disabled={activando} maxLength={120}
           onChange={(e) => { setBusqueda(e.target.value); setPagina(1); }} />
       </label>
       <label className="block"><span className="mb-1.5 block font-semibold">Estado de la cuenta</span>
-        <Select value={estado} disabled={activando} onChange={(e) => {
-          setEstado(e.target.value as typeof estado); setPagina(1);
+        <Select value={estado} disabled={activando} onValueChange={(value) => {
+          setEstado(value as typeof estado); setPagina(1);
         }}><option value="todos">Todos</option><option value="inactivos">Pendientes / inactivos</option><option value="activos">Activos</option></Select>
       </label>
-    </div>
-    <DataTable columnas={columnas} filas={(datos?.data ?? []).map((u) => activados.has(u.id) ? { ...u, activo: true } : u)}
+    </div>} columnas={columnas} filas={(datos?.data ?? []).map((u) => activados.has(u.id) ? { ...u, activo: true } : u)}
       clave={(u) => u.id} ocultarFiltro cargando={cargando} error={error}
       mensajeVacio="No hay usuarios que coincidan con los filtros."
       paginacion={datos ? { page: datos.page, total: datos.total, totalPages: datos.totalPages, onCambiarPagina: setPagina } : undefined} />

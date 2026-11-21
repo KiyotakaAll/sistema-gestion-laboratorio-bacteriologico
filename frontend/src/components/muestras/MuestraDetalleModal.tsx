@@ -1,4 +1,4 @@
-import { Ban, PackageCheck, Play } from 'lucide-react';
+import { IconoRechazado, IconoRecepcionMuestras, IconoProcesamiento } from '../icons/LabZenIcon';
 import { useMemo, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
@@ -112,17 +112,17 @@ export function MuestraDetalleModal({ muestraId, onCerrar, onCambio }: Props) {
         <>
           <Button onClick={onCerrar} disabled={ejecutando}>Cerrar</Button>
           {puedeRechazar && !rechazando && (
-            <Button variante="peligro" icono={<Ban className="h-3.5 w-3.5" aria-hidden />} onClick={() => setRechazando(true)} disabled={ejecutando}>
+            <Button variante="peligro" icono={<IconoRechazado className="h-3.5 w-3.5" aria-hidden />} onClick={() => setRechazando(true)} disabled={ejecutando}>
               Rechazar muestra
             </Button>
           )}
           {puedeReceptar && (
-            <Button variante="primario" icono={<PackageCheck className="h-3.5 w-3.5" aria-hidden />} cargando={ejecutando} onClick={() => void ejecutar(() => muestrasApi.receptar(muestraId), 'Muestra receptada')}>
+            <Button variante="primario" icono={<IconoRecepcionMuestras className="h-3.5 w-3.5" aria-hidden />} cargando={ejecutando} onClick={() => void ejecutar(() => muestrasApi.receptar(muestraId), 'Muestra receptada')}>
               Receptar muestra
             </Button>
           )}
           {puedeProcesar && (
-            <Button variante="primario" icono={<Play className="h-3.5 w-3.5" aria-hidden />} cargando={ejecutando} onClick={() => void ejecutar(() => muestrasApi.procesar(muestraId), 'Procesamiento iniciado')}>
+            <Button variante="primario" icono={<IconoProcesamiento className="h-3.5 w-3.5" aria-hidden />} cargando={ejecutando} onClick={() => void ejecutar(() => muestrasApi.procesar(muestraId), 'Procesamiento iniciado')}>
               Iniciar procesamiento
             </Button>
           )}

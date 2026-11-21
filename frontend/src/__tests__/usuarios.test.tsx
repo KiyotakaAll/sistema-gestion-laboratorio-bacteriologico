@@ -45,7 +45,7 @@ it('administración muestra estados y evita autoactivación o activación admini
   expect(screen.getByRole('link', { name: 'Gestión de usuarios' })).toHaveAttribute('aria-current', 'page');
 });
 it('sin sesión envía a Login sin consultar usuarios', async () => {
-  abrir(null); expect(await screen.findByRole('heading', { name: 'Bienvenido de nuevo' })).toBeInTheDocument();
+  abrir(null); expect(await screen.findByRole('heading', { name: 'Tu espacio de trabajo' })).toBeInTheDocument();
   expect(usuariosApi.listar).not.toHaveBeenCalled();
 });
 for (const rol of ['RECEPCIONISTA', 'BACTERIOLOGO', 'VALIDADOR'] as const) it(`${rol}: oculta el menú y deniega la ruta de usuarios`, async () => {
@@ -108,7 +108,8 @@ it('muestra error de listado y puede volver a cargar', async () => {
 });
 it('aplica búsqueda y filtro de estado al backend', async () => {
   abrir(); await screen.findByText(pendiente.email);
-  fireEvent.change(screen.getByLabelText('Estado de la cuenta'), { target: { value: 'inactivos' } });
+  await userEvent.click(screen.getByLabelText('Estado de la cuenta'));
+  await userEvent.click(await screen.findByRole('option', { name: 'Pendientes / inactivos' }));
   await waitFor(() => expect(usuariosApi.listar).toHaveBeenLastCalledWith({ q: '', estado: 'inactivos', page: 1, pageSize: 25 }));
   fireEvent.change(screen.getByLabelText('Buscar usuarios'), { target: { value: 'persona' } });
   await waitFor(() => expect(usuariosApi.listar).toHaveBeenLastCalledWith({ q: 'persona', estado: 'inactivos', page: 1, pageSize: 25 }));

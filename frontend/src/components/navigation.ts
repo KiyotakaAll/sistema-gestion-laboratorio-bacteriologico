@@ -1,15 +1,6 @@
 
-import {
-  ClipboardCheck,
-  FlaskConical,
-  LayoutDashboard,
-  Microscope,
-  Settings2,
-  TestTubes,
-  UserRoundPlus,
-  Users,
-  type LucideIcon,
-} from 'lucide-react';
+import { Microscope } from 'lucide-react';
+import { IconoPanelGeneral, IconoPacientes, IconoRecepcionMuestras, IconoWorklist, IconoValidacion, IconoUsuarios, IconoConfiguracion, type LabZenIconComponent } from './icons/LabZenIcon';
 
 import type { RolNombre } from '../types/api';
 
@@ -18,7 +9,7 @@ export interface ItemNavegacion {
   etiqueta: string;
   /** Título mostrado en la cabecera. */
   titulo: string;
-  icono: LucideIcon;
+  icono: LabZenIconComponent;
   /** Roles con acceso. Se aplica igual al menú y a la protección de la ruta. */
   roles: RolNombre[];
 }
@@ -35,49 +26,49 @@ export const NAVEGACION: ItemNavegacion[] = [
     ruta: '/dashboard',
     etiqueta: 'Panel general',
     titulo: 'Panel general',
-    icono: LayoutDashboard,
+    icono: IconoPanelGeneral,
     roles: TODOS,
   },
   {
     ruta: '/admision',
     etiqueta: 'Admisión de pacientes',
     titulo: 'Admisión de pacientes y solicitudes',
-    icono: UserRoundPlus,
+    icono: IconoPacientes,
     roles: ['ADMINISTRADOR', 'RECEPCIONISTA'],
   },
   {
     ruta: '/recepcion',
     etiqueta: 'Recepción de muestras',
     titulo: 'Control y trazabilidad de muestras',
-    icono: TestTubes,
+    icono: IconoRecepcionMuestras,
     roles: ['ADMINISTRADOR', 'RECEPCIONISTA', 'BACTERIOLOGO'],
   },
   {
     ruta: '/worklist',
     etiqueta: 'Worklist bacteriológico',
     titulo: 'Worklist bacteriológico',
-    icono: FlaskConical,
+    icono: IconoWorklist,
     roles: ['ADMINISTRADOR', 'BACTERIOLOGO'],
   },
   {
     ruta: '/validacion',
     etiqueta: 'Consulta y validación',
     titulo: 'Consulta y validación de resultados',
-    icono: ClipboardCheck,
+    icono: IconoValidacion,
     roles: ['ADMINISTRADOR', 'BACTERIOLOGO', 'VALIDADOR'],
   },
   {
     ruta: '/usuarios',
     etiqueta: 'Gestión de usuarios',
     titulo: 'Gestión de usuarios',
-    icono: Users,
+    icono: IconoUsuarios,
     roles: ['ADMINISTRADOR'],
   },
   {
     ruta: '/configuracion',
     etiqueta: 'Configuración',
     titulo: 'Configuración y preferencias',
-    icono: Settings2,
+    icono: IconoConfiguracion,
     roles: TODOS,
 },
 ];

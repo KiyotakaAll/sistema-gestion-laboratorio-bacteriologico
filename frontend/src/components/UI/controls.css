@@ -1,0 +1,59 @@
+/* Controles LabZen. No afectan al login ni a los estilos globales. */
+.labzen-internal .lz-select-trigger { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; min-width: 0; min-height: 44px; padding: 10px 13px; border: 1px solid rgb(var(--lz-control-line)); border-radius: 10px; background: rgb(var(--lz-surface)); color: rgb(var(--lz-heading)); text-align: left; font: 400 13px/1.5 var(--lz-ui); }
+.labzen-internal .lz-select-trigger > span { min-width: 0; overflow-wrap: anywhere; }
+.labzen-internal .lz-select-trigger > svg { flex: none; color: rgb(var(--lz-accent)); transition: transform 180ms; }
+.labzen-internal .lz-select-trigger[aria-expanded='true'] > svg { transform: rotate(180deg); }
+.labzen-internal .lz-select-trigger:disabled { cursor: not-allowed; opacity: .55; }
+.labzen-internal.lz-control-popover { z-index: 90; box-sizing: border-box; overflow: auto; overscroll-behavior: contain; border: 1px solid rgb(var(--lz-control-line)); border-radius: 14px; background: rgb(var(--lz-surface)); color: rgb(var(--lz-heading)); box-shadow: 0 12px 35px #061f2b1f; font: 400 13px/1.5 var(--lz-ui); animation: lz-control-appear 150ms ease-out; }
+.labzen-internal.lz-options { padding: 5px; }
+.labzen-internal .lz-option { display: flex; justify-content: space-between; align-items: center; gap: 14px; min-height: 44px; padding: 10px 12px; border-radius: 8px; cursor: pointer; overflow-wrap: anywhere; }
+.labzen-internal .lz-option > svg { flex: none; color: rgb(var(--lz-accent)); }
+.labzen-internal .lz-option:hover, .labzen-internal .lz-option-active { background: rgb(var(--lz-subtle)); }
+.labzen-internal .lz-option[aria-selected='true'] { color: rgb(var(--lz-accent)); background: rgb(var(--lz-accent-soft)); font-weight: 600; }
+.labzen-internal .lz-option[aria-disabled='true'] { opacity: .45; cursor: not-allowed; }
+.labzen-internal .lz-no-options { padding: 12px; color: rgb(var(--lz-muted)); }
+.labzen-internal .lz-combobox, .labzen-internal .lz-date-control { min-width: 0; width: 100%; }
+.labzen-internal .lz-combobox-input, .labzen-internal .lz-date-input { position: relative; min-width: 0; }
+.labzen-internal :is(.lz-combobox-control, .lz-date-text, .lz-time-input) { width: 100%; min-width: 0; height: 44px; border: 1px solid rgb(var(--lz-control-line)); border-radius: 10px; padding: 0 13px; background: rgb(var(--lz-surface)); color: rgb(var(--lz-heading)); font: 400 13px var(--lz-ui); }
+.labzen-internal .lz-combobox-control { padding-right: 76px; }
+.labzen-internal .lz-combobox-actions { position: absolute; right: 4px; top: 4px; bottom: 4px; display: flex; }
+.labzen-internal .lz-combobox-actions button, .labzen-internal .lz-date-toggle { display: grid; place-items: center; width: 34px; border-radius: 7px; color: rgb(var(--lz-accent)); }
+.labzen-internal .lz-combobox-actions button:hover, .labzen-internal .lz-date-toggle:hover { background: rgb(var(--lz-accent-soft)); }
+.labzen-internal .lz-control-hint { margin-top: 5px; font: 400 11px/1.6 var(--lz-ui); color: rgb(var(--lz-muted)); }
+.labzen-internal .lz-control-error { margin-top: 6px; color: #a22b47; font: 400 12px/1.5 var(--lz-ui); }
+[data-tema='oscuro'] .labzen-internal .lz-control-error { color: #ffb7cc; }
+.labzen-internal .lz-date-text { padding-right: 45px; }
+.labzen-internal .lz-date-toggle { position: absolute; right: 4px; top: 4px; bottom: 4px; }
+.labzen-internal :is(.lz-date-text, .lz-time-input, .lz-combobox-control):disabled { opacity: .55; cursor: not-allowed; }
+.labzen-internal .lz-date-toggle:disabled, .labzen-internal .lz-combobox-actions button:disabled { opacity: .45; cursor: not-allowed; }
+.labzen-internal [aria-invalid='true'].ui-control { border-color: #b63f57; }
+.labzen-internal.lz-calendar { width: min(340px, calc(100vw - 24px)); padding: 14px; }
+.labzen-internal .lz-calendar-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.labzen-internal .lz-calendar-heading p { margin: 0; font: 500 16px/1.5 var(--lz-ui); color: rgb(var(--lz-heading)); }
+.labzen-internal .lz-calendar-heading p::first-letter { text-transform: uppercase; }
+.labzen-internal .lz-calendar-heading > button { display: grid; place-items: center; width: 36px; height: 36px; flex: none; border: 1px solid rgb(var(--lz-line)); border-radius: 9px; color: rgb(var(--lz-accent)); }
+.labzen-internal .lz-calendar-heading > button:hover:not(:disabled) { background: rgb(var(--lz-accent-soft)); }
+.labzen-internal .lz-calendar-jump { display: grid; grid-template-columns: minmax(0, 1fr) 90px; gap: 10px; margin-block: 10px 15px; }
+.labzen-internal .lz-calendar-jump label { display: block; margin-bottom: 4px; font-size: 11px; color: rgb(var(--lz-muted)); }
+.labzen-internal .lz-calendar-jump input { width: 100%; height: 44px; padding: 0 10px; border: 1px solid rgb(var(--lz-control-line)); background: rgb(var(--lz-surface)); color: rgb(var(--lz-heading)); }
+.labzen-internal .lz-calendar-grid { table-layout: fixed; width: 100%; border-collapse: separate; border-spacing: 2px; }
+.labzen-internal .lz-calendar-grid th { height: 28px; font: 500 11px/1.5 var(--lz-ui); color: rgb(var(--lz-muted)); text-transform: capitalize; }
+.labzen-internal .lz-calendar-grid td { padding: 0; text-align: center; }
+.labzen-internal .lz-calendar-grid button { width: 100%; min-height: 38px; border: 1px solid transparent; border-radius: 9px; font-variant-numeric: tabular-nums; }
+.labzen-internal .lz-calendar-grid button:hover:not(:disabled) { background: rgb(var(--lz-accent-soft)); }
+.labzen-internal .lz-calendar-grid button[aria-current='date'] { border-color: rgb(var(--lz-accent)); font-weight: 600; }
+.labzen-internal .lz-calendar-grid button.lz-day-selected { background: #007579; color: #fff; font-weight: 600; }
+.labzen-internal .lz-calendar-grid button.lz-day-selected:hover { background: #006a70; }
+.labzen-internal .lz-day-outside { color: rgb(var(--lz-muted)); }
+.labzen-internal .lz-calendar button:disabled { opacity: .35; cursor: not-allowed; }
+.labzen-internal .lz-calendar-footer { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 5px; margin-top: 12px; padding-top: 10px; border-top: 1px solid rgb(var(--lz-line)); }
+.labzen-internal .lz-calendar-footer button { min-height: 38px; padding: 6px 9px; border-radius: 8px; color: rgb(var(--lz-accent)); font-weight: 600; font-size: 12px; }
+.labzen-internal .lz-calendar-footer button:hover:not(:disabled) { background: rgb(var(--lz-accent-soft)); }
+.labzen-internal .lz-datetime { display: grid; gap: 8px; min-width: 0; }
+.labzen-internal .lz-datetime label { display: block; }
+.labzen-internal .lz-time-input { margin-top: 4px; font-variant-numeric: tabular-nums; }
+.labzen-internal .lz-calendar-grid button:focus-visible { outline-offset: -3px; }
+@keyframes lz-control-appear { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .labzen-internal.lz-control-popover, .labzen-internal .lz-select-trigger > svg { animation: none; transition: none; } }
+[data-movimiento='reducido'] .labzen-internal.lz-control-popover { animation: none; }
+@media (pointer: coarse) { .labzen-internal .lz-calendar-grid button { min-height: 42px; } }

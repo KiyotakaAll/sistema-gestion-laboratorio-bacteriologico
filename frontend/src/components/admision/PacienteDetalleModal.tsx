@@ -1,4 +1,4 @@
-import { Pencil, Plus, TestTubes } from 'lucide-react';
+import { IconoEditar, IconoSolicitudes, IconoMuestras } from '../icons/LabZenIcon';
 import { useMemo, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '../../context/ToastContext';
@@ -51,7 +51,7 @@ export function PacienteDetalleModal({ pacienteId, puedeEscribir, onCerrar, onCa
         align: 'right',
         cell: (s) =>
           puedeEscribir ? (
-            <Button tamano="sm" variante="fantasma" icono={<TestTubes className="h-3.5 w-3.5" aria-hidden />} onClick={() => navigate(`/recepcion?solicitudId=${s.id}`)}>
+            <Button tamano="sm" variante="fantasma" icono={<IconoMuestras className="h-3.5 w-3.5" aria-hidden />} onClick={() => navigate(`/recepcion?solicitudId=${s.id}`)}>
               Registrar muestra
             </Button>
           ) : null,
@@ -84,7 +84,7 @@ export function PacienteDetalleModal({ pacienteId, puedeEscribir, onCerrar, onCa
                 <Dato etiqueta="Dirección" className="col-span-2">{paciente.direccion}</Dato>
               </Datos>
               {puedeEscribir && (
-                <Button tamano="sm" icono={<Pencil className="h-3.5 w-3.5" aria-hidden />} onClick={() => setEditando(true)}>
+                <Button tamano="sm" icono={<IconoEditar className="h-3.5 w-3.5" aria-hidden />} onClick={() => setEditando(true)}>
                   Editar datos
                 </Button>
               )}
@@ -94,7 +94,7 @@ export function PacienteDetalleModal({ pacienteId, puedeEscribir, onCerrar, onCa
               titulo="Solicitudes médicas"
               acciones={
                 puedeEscribir && !nuevaSolicitud ? (
-                  <Button tamano="sm" variante="primario" icono={<Plus className="h-3.5 w-3.5" aria-hidden />} onClick={() => setNuevaSolicitud(true)}>
+                  <Button tamano="sm" variante="primario" icono={<IconoSolicitudes className="h-3.5 w-3.5" aria-hidden />} onClick={() => setNuevaSolicitud(true)}>
                     Nueva solicitud
                   </Button>
                 ) : undefined
@@ -186,7 +186,7 @@ function NuevaSolicitudForm({ pacienteId, onCancelar, onCreada, guardando, setGu
         </div>
       )}
       <Campo etiqueta="Prioridad">
-        <Select value={prioridad} onChange={(e) => setPrioridad(e.target.value as Prioridad)}>
+        <Select value={prioridad} onValueChange={(value) => setPrioridad(value as Prioridad)}>
           <option value="RUTINA">Rutina</option>
           <option value="URGENTE">Urgente</option>
         </Select>

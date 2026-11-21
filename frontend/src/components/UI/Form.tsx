@@ -1,8 +1,8 @@
+import { Children, cloneElement, isValidElement, useId } from 'react';
 
 import type {
   InputHTMLAttributes,
   ReactNode,
-  SelectHTMLAttributes,
   TextareaHTMLAttributes,
 } from 'react';
 
@@ -21,20 +21,7 @@ export function Input({
   );
 }
 
-export function Select({
-  className = '',
-  children,
-  ...resto
-}: SelectHTMLAttributes<HTMLSelectElement>) {
-  return (
-    <select
-      className={`${BASE} h-11 ${className}`}
-      {...resto}
-    >
-      {children}
-    </select>
-  );
-}
+export { Select } from './Select';
 
 export function Textarea({
   className = '',
@@ -61,19 +48,23 @@ export function Campo({
   children,
   className = '',
 }: CampoProps) {
+  const generated = useId();
+  const nodes = Children.toArray(children);
+  const child = nodes.find((node) => isValidElement<{ id?: string }>(node));
+  const id = isValidElement<{ id?: string }>(child) ? (child.props.id ?? generated) : generated;
   return (
-    <label className={`block ${className}`}>
-      <span className="mb-1.5 block text-[13px] font-semibold text-body">
+    <div className={`lz-field block ${className}`}>
+      <label htmlFor={id} className="mb-1.5 block text-[13px] font-semibold text-body">
         {etiqueta}
-      </span>
+      </label>
 
-      {children}
+      {nodes.map((node) => node === child && isValidElement<{ id?: string }>(node) ? cloneElement(node, { id }) : node)}
 
       {ayuda && (
         <span className="mt-1.5 block text-xs text-muted">
           {ayuda}
         </span>
       )}
-    </label>
+    </div>
   );
 }

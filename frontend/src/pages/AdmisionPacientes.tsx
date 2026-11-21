@@ -1,7 +1,8 @@
-import { Plus, Search } from 'lucide-react';
+import { IconoNuevo, IconoBuscar } from '../components/icons/LabZenIcon';
 import { useMemo, useState } from 'react';
 import { PacienteDetalleModal } from '../components/admision/PacienteDetalleModal';
 import { PacienteFormModal } from '../components/admision/PacienteFormModal';
+import { PageHeader } from '../components/UI/PageHeader';
 import { Button } from '../components/UI/Button';
 import { DataTable, type Column } from '../components/UI/DataTable';
 import { useAuth } from '../context/AuthContext';
@@ -41,7 +42,11 @@ export default function AdmisionPacientes() {
 
   return (
     <>
-      <DataTable
+      <PageHeader contexto="Admisión y seguimiento" titulo="Pacientes"
+        descripcion="Encuentra al paciente, consulta su información y continúa con sus solicitudes."
+        acciones={puedeEscribir ? <Button variante="primario" icono={<IconoNuevo size={17} aria-hidden />} onClick={() => setRegistrando(true)}>Registrar paciente</Button> : undefined} />
+      <DataTable titulo="Directorio de pacientes" descripcion="Selecciona un registro para consultar sus datos y solicitudes."
+
         columnas={columnas}
         filas={datos?.data ?? []}
         clave={(p) => p.id}
@@ -54,9 +59,9 @@ export default function AdmisionPacientes() {
         paginacion={datos ? { page: datos.page, totalPages: datos.totalPages, total: datos.total, onCambiarPagina: setPagina } : undefined}
         barra={
           <>
-            <label className="relative block w-96">
+            <label className="lz-search-field relative block">
               <span className="sr-only">Buscar paciente</span>
-              <Search className="pointer-events-none absolute left-2 top-1.5 h-3.5 w-3.5 text-slate-400" aria-hidden />
+              <IconoBuscar className="pointer-events-none absolute left-2 top-1.5 h-3.5 w-3.5 text-slate-400" aria-hidden />
               <input
                 type="search"
                 value={busqueda}
@@ -65,14 +70,10 @@ export default function AdmisionPacientes() {
                   setPagina(1);
                 }}
                 placeholder="Buscar por cédula, nombres o apellidos"
-                className="h-7 w-full rounded-sm border border-slate-300 bg-surface pl-7 pr-2 text-sm placeholder:text-slate-400 focus:border-violeta-500"
+                className="ui-control h-11 w-full rounded-lg border border-line bg-surface pl-10 pr-3 text-sm text-heading"
               />
             </label>
-            {puedeEscribir && (
-              <Button tamano="sm" variante="primario" icono={<Plus className="h-3.5 w-3.5" aria-hidden />} onClick={() => setRegistrando(true)}>
-                Registrar paciente
-              </Button>
-            )}
+
           </>
         }
       />

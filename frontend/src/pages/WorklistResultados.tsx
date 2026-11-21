@@ -1,6 +1,10 @@
+import { ArrowRight } from 'lucide-react';
+import { IconoWorklist } from '../components/icons/LabZenIcon';
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { EstadoResultadoBadge, ETIQUETA_ESTADO_RESULTADO, PrioridadBadge } from '../components/UI/Badge';
+import { PageHeader } from '../components/UI/PageHeader';
+import { WorkflowOverview } from '../components/UI/WorkflowOverview';
 import { DataTable, type Column } from '../components/UI/DataTable';
 import { ResultadoFormModal } from '../components/resultados/ResultadoFormModal';
 import { useAuth } from '../context/AuthContext';
@@ -37,15 +41,16 @@ export default function WorklistResultados() {
 
   return (
     <>
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <p className="text-sm text-slate-600">
-          Esta lista corresponde a muestras en procesamiento. Al completar sus resultados, pasan a procesadas y salen de esta lista. El historial completo se consulta en resultados registrados.
-        </p>
-        <Link to="/validacion" className="text-sm font-semibold text-violeta-700 underline hover:text-violeta-900">
-          Consultar resultados registrados
-        </Link>
-      </div>
-      <DataTable
+      <PageHeader contexto="Área de procesamiento" titulo="Worklist bacteriológico"
+        descripcion="Organiza los exámenes en procesamiento y abre cada registro para consultar o ingresar hallazgos."
+        acciones={<Link to="/validacion" className="lz-secondary-action">Consultar resultados registrados <ArrowRight size={16} aria-hidden /></Link>} />
+      <WorkflowOverview titulo="Cola de trabajo" descripcion="Esta lista corresponde a muestras en procesamiento. Al completar sus resultados, pasan a procesadas y salen de esta lista. El historial completo se consulta en resultados registrados.">
+        <div className="lz-worklist-summary"><IconoWorklist size={24} strokeWidth={1.7} aria-hidden />
+          <strong>{cargando || error ? '—' : datos?.length ?? 0}</strong><span>{soloPendientes ? 'exámenes sin resultado' : 'exámenes en la lista actual'}</span>
+          <span className="lz-worklist-guidance">Selecciona un examen para continuar con sus hallazgos.</span>
+        </div>
+      </WorkflowOverview>
+      <DataTable titulo="Exámenes en procesamiento" descripcion="Selecciona un examen para abrir sus hallazgos."
         columnas={columnas}
         filas={datos ?? []}
         clave={(i) => i.id}
@@ -55,7 +60,7 @@ export default function WorklistResultados() {
         placeholderFiltro="Filtrar por paciente, código, examen o estado"
         mensajeVacio={soloPendientes ? 'No hay exámenes esperando resultado. Las muestras aparecen aquí cuando inicia su procesamiento.' : 'No hay muestras en procesamiento.'}
         barra={
-          <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-700">
+          <label className="lz-toggle-filter">
             <input type="checkbox" checked={soloPendientes} onChange={(e) => setSoloPendientes(e.target.checked)} className="h-3.5 w-3.5 accent-violeta-700" />
             Solo exámenes sin resultado
           </label>

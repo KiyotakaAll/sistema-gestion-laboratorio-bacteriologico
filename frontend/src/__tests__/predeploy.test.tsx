@@ -18,9 +18,9 @@ let oscuroSistema = false;
 let alCambiarSistema: (() => void) | undefined;
 beforeEach(() => {
   vi.clearAllMocks(); oscuroSistema = false; alCambiarSistema = undefined;
-  vi.stubGlobal('matchMedia', vi.fn(() => ({
-    get matches() { return oscuroSistema; },
-    addEventListener: (_: string, fn: () => void) => { alCambiarSistema = fn; },
+  vi.stubGlobal('matchMedia', vi.fn((query: string) => ({
+    get matches() { return query === '(prefers-color-scheme: dark)' && oscuroSistema; },
+    addEventListener: (_: string, fn: () => void) => { if (query === '(prefers-color-scheme: dark)') alCambiarSistema = fn; },
     removeEventListener: vi.fn(),
   })));
   vi.mocked(authApi.registrar).mockResolvedValue({ mensaje });
@@ -41,7 +41,7 @@ describe('Registro público', () => {
     expect(screen.getByRole('heading', { name: 'Crear cuenta' })).toBeInTheDocument();
     screen.getByRole('link', { name: 'Volver a iniciar sesión' }).focus();
     await u.keyboard('{Enter}');
-    expect(screen.getByRole('heading', { name: 'Bienvenido de nuevo' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Tu espacio de trabajo' })).toBeInTheDocument();
   });
   it('valida campos, correo, longitud en bytes, complejidad y confirmación', () => {
     expect(validarRegistro(datos)).toEqual({});
@@ -142,7 +142,7 @@ describe('Configuración y Sidebar', () => {
       configuracion.focus(); await u.keyboard('{Enter}');
       expect(screen.getByRole('heading', { name: 'Configuración' })).toBeInTheDocument();
       await u.click(screen.getByRole('button', { name: 'Cerrar sesión' }));
-      expect(await screen.findByRole('heading', { name: 'Bienvenido de nuevo' })).toBeInTheDocument();
+      expect(await screen.findByRole('heading', { name: 'Tu espacio de trabajo' })).toBeInTheDocument();
       expect(localStorage.getItem('lab_token')).toBeNull();
     });
   }

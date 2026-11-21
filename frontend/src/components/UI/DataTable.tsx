@@ -1,19 +1,14 @@
 
-import {
-  ChevronDown,
-  ChevronLeft,
-  ChevronRight,
-  ChevronUp,
-  ChevronsUpDown,
-  Loader2,
-  Search,
-} from 'lucide-react';
+import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, ChevronsUpDown, Loader2, ArrowLeftRight } from 'lucide-react';
+import { IconoBuscar } from '../icons/LabZenIcon';
 import {
   useMemo,
   useState,
   type KeyboardEvent,
   type ReactNode,
 } from 'react';
+import { PanelHeading } from './PageHeader';
+import { useInternalUI } from '../../context/InternalUIContext';
 
 export interface Column<T> {
   id: string;
@@ -33,6 +28,9 @@ interface Paginacion {
 }
 
 interface DataTableProps<T> {
+  titulo?: string;
+  descripcion?: ReactNode;
+  variante?: 'panel' | 'integrada';
   columnas: Column<T>[];
   filas: T[];
   clave: (fila: T) => string | number;
@@ -85,6 +83,9 @@ const ALINEACION = {
 } as const;
 
 export function DataTable<T>({
+  titulo,
+  descripcion,
+  variante = 'panel',
   columnas,
   filas,
   clave,
@@ -99,6 +100,7 @@ export function DataTable<T>({
   ordenInicial,
   alturaMaxima,
 }: DataTableProps<T>) {
+  const interno = useInternalUI();
   const [filtro, setFiltro] = useState('');
   const [orden, setOrden] = useState<{
     columna: string;
@@ -167,10 +169,11 @@ export function DataTable<T>({
   }
 
   return (
-    <div className="flex min-h-0 flex-col overflow-hidden rounded-xl border border-line bg-surface shadow-sm">
+    <div className={`lz-table-panel lz-table-${variante} flex min-h-0 flex-col overflow-hidden rounded-xl border border-line bg-surface shadow-sm`}>
+      {titulo && <div className="lz-table-intro"><PanelHeading titulo={titulo} descripcion={descripcion} /></div>}
 
       {(!ocultarFiltro || barra) && (
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line bg-surface px-5 py-4">
+        <div className="lz-table-toolbar flex flex-wrap items-center justify-between gap-3 border-b border-line bg-surface px-5 py-4">
 
           {!ocultarFiltro && (
             <label className="relative block w-full max-w-sm">
@@ -178,7 +181,7 @@ export function DataTable<T>({
                 {placeholderFiltro}
               </span>
 
-              <Search
+              <IconoBuscar
                 className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted"
                 aria-hidden
               />
@@ -193,14 +196,18 @@ export function DataTable<T>({
             </label>
           )}
 
-          <div className="ml-auto flex flex-wrap items-center gap-3">
+          <div className="lz-table-filters ml-auto flex flex-wrap items-center gap-3">
             {barra}
           </div>
         </div>
       )}
 
+      {interno && <p className="lz-table-scroll-hint"><ArrowLeftRight size={14} aria-hidden />Desplaza la tabla para ver más columnas</p>}
       <div
-        className="min-h-0 overflow-auto"
+        className="lz-table-scroll min-h-0 overflow-auto"
+        tabIndex={interno ? 0 : undefined}
+        role={interno ? 'region' : undefined}
+        aria-label={interno ? (titulo ?? 'Tabla de registros') : undefined}
         style={
           alturaMaxima
             ? { maxHeight: alturaMaxima }
@@ -271,13 +278,15 @@ export function DataTable<T>({
               <tr>
                 <td
                   colSpan={columnas.length}
-                  className="px-5 py-12 text-center text-muted"
+                  className="lz-table-state px-5 py-12 text-center text-muted"
                 >
+                  <div className="lz-table-state-message">
                   <Loader2
                     className="mr-2 inline h-4 w-4 animate-spin text-accent"
                     aria-hidden
                   />
                   Cargando datos...
+                  </div>
                 </td>
               </tr>
             )}
@@ -286,9 +295,9 @@ export function DataTable<T>({
               <tr>
                 <td
                   colSpan={columnas.length}
-                  className="bg-rose-50 px-5 py-8 text-center text-rose-700"
+                  className="lz-table-state bg-rose-50 px-5 py-8 text-center text-rose-700"
                 >
-                  {error}
+                  <div className="lz-table-state-message">{error}</div>
                 </td>
               </tr>
             )}
@@ -299,11 +308,13 @@ export function DataTable<T>({
                 <tr>
                   <td
                     colSpan={columnas.length}
-                    className="px-5 py-14 text-center text-muted"
+                    className="lz-table-state px-5 py-14 text-center text-muted"
                   >
+                    <div className="lz-table-state-message">
                     {filas.length > 0
                       ? 'Ninguna fila coincide con el filtro.'
                       : mensajeVacio}
+                    </div>
                   </td>
                 </tr>
               )}

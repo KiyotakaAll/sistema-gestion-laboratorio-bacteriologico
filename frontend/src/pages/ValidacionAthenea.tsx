@@ -1,7 +1,10 @@
+import { IconoValidacion } from '../components/icons/LabZenIcon';
 import { useMemo, useState } from 'react';
 import { EstadoResultadoBadge, ETIQUETA_ESTADO_RESULTADO, PrioridadBadge } from '../components/UI/Badge';
 import { DataTable, type Column } from '../components/UI/DataTable';
-import { Select } from '../components/UI/Form';
+import { PageHeader } from '../components/UI/PageHeader';
+import { WorkflowOverview } from '../components/UI/WorkflowOverview';
+import { Campo, Select } from '../components/UI/Form';
 import { ResultadoRevisionModal } from '../components/resultados/ResultadoRevisionModal';
 import { useAuth } from '../context/AuthContext';
 import { useCarga } from '../hooks/useCarga';
@@ -37,18 +40,17 @@ export default function ValidacionAthenea() {
 
   return (
     <>
-      <div className="mb-3">
-        <h2 className="font-serif text-lg font-semibold text-slate-900">
-          {puedeValidar ? 'Validación de resultados' : 'Consulta de resultados'}
-        </h2>
-        <p className="text-sm text-slate-600">
-          {puedeValidar
-            ? 'Revise los resultados y valide los registrados por otra persona.'
-            : 'Consulte los resultados registrados, incluidos los de muestras procesadas. Su rol tiene acceso de solo lectura en esta pantalla.'}
-        </p>
-        <p className="text-xs text-slate-500">La búsqueda de texto filtra únicamente la página actual.</p>
-      </div>
-      <DataTable
+      <PageHeader contexto="Revisión y consulta" titulo="Resultados del laboratorio"
+        descripcion={puedeValidar ? 'Revisa los hallazgos y valida los registrados por otra persona.' : 'Consulta los hallazgos registrados y el estado de su validación.'} />
+      <div className="lz-notice"><IconoValidacion size={20} strokeWidth={1.7} aria-hidden /><div><strong>Validación independiente</strong>
+        <p>{puedeValidar ? 'Revise los resultados y valide los registrados por otra persona.' : 'Consulte los resultados registrados, incluidos los de muestras procesadas. Su rol tiene acceso de solo lectura en esta pantalla.'}</p></div></div>
+      <WorkflowOverview titulo="Resultados por revisar" descripcion="Resumen de la página cargada, según los filtros seleccionados.">
+        <dl className="lz-result-summary">
+          <div><dt>Pendientes en esta página</dt><dd>{cargando || error ? '—' : datos?.data.filter(r => r.estado === 'PENDIENTE_VALIDACION').length ?? 0}</dd></div>
+          <div><dt>Validados en esta página</dt><dd>{cargando || error ? '—' : datos?.data.filter(r => r.estado === 'VALIDADO').length ?? 0}</dd></div>
+        </dl>
+      </WorkflowOverview>
+      <DataTable titulo={puedeValidar ? 'Validación de resultados' : 'Consulta de resultados'} descripcion="La búsqueda de texto filtra únicamente la página actual."
         columnas={columnas}
         filas={datos?.data ?? []}
         clave={(r) => r.id}
@@ -60,19 +62,19 @@ export default function ValidacionAthenea() {
         ordenInicial={{ columna: 'fecha', direccion: 'asc' }}
         paginacion={datos ? { page: datos.page, totalPages: datos.totalPages, total: datos.total, onCambiarPagina: setPagina } : undefined}
         barra={
-          <Select
-            className="!h-7 w-56"
+          <Campo etiqueta="Estado del resultado"><Select
+            className="w-full"
             aria-label="Estado del resultado"
             value={estado}
-            onChange={(e) => {
-              setEstado(e.target.value as EstadoResultado | '');
+            onValueChange={(value) => {
+              setEstado(value as EstadoResultado | '');
               setPagina(1);
             }}
           >
             <option value="PENDIENTE_VALIDACION">Pendientes de validación</option>
             <option value="VALIDADO">Validados</option>
             <option value="">Todos</option>
-          </Select>
+          </Select></Campo>
         }
       />
 

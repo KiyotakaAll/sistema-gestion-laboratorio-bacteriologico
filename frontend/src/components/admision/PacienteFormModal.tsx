@@ -7,6 +7,8 @@ import { aInputFecha, opcional } from '../../utils/format';
 import { Alert } from '../UI/Alert';
 import { Button } from '../UI/Button';
 import { Campo, Input, Select } from '../UI/Form';
+import { DatePicker } from '../UI/DatePicker';
+import { todayCivil } from '../UI/civilDate';
 import { Modal } from '../UI/Modal';
 
 interface Props {
@@ -79,17 +81,18 @@ export function PacienteFormModal({ paciente, onCerrar, onGuardado }: Props) {
         </>
       }
     >
-      <form id={ID_FORMULARIO} onSubmit={enviar} className="grid grid-cols-2 gap-x-4 gap-y-3">
+      <form id={ID_FORMULARIO} onSubmit={enviar} className="lz-patient-form">
         {error && (
           <div className="col-span-2">
             <Alert detalles={detalles}>{error}</Alert>
           </div>
         )}
+        <fieldset className="lz-form-section"><legend>Datos del paciente</legend><div className="grid grid-cols-2 gap-x-4 gap-y-4">
         <Campo etiqueta="Cédula">
           <Input value={cedula} onChange={(e) => setCedula(e.target.value)} disabled={paciente !== null} required autoFocus={!paciente} />
         </Campo>
         <Campo etiqueta="Fecha de nacimiento">
-          <Input type="date" value={fechaNacimiento} onChange={(e) => setFechaNacimiento(e.target.value)} required />
+          <DatePicker value={fechaNacimiento} onValueChange={setFechaNacimiento} min="1900-01-01" max={todayCivil()} required />
         </Campo>
         <Campo etiqueta="Nombres">
           <Input value={nombres} onChange={(e) => setNombres(e.target.value)} required />
@@ -98,12 +101,14 @@ export function PacienteFormModal({ paciente, onCerrar, onGuardado }: Props) {
           <Input value={apellidos} onChange={(e) => setApellidos(e.target.value)} required />
         </Campo>
         <Campo etiqueta="Sexo">
-          <Select value={sexo} onChange={(e) => setSexo(e.target.value as Sexo)}>
+          <Select value={sexo} onValueChange={(value) => setSexo(value as Sexo)}>
             <option value="F">Femenino</option>
             <option value="M">Masculino</option>
             <option value="O">Otro</option>
           </Select>
         </Campo>
+        </div></fieldset>
+        <fieldset className="lz-form-section"><legend>Información de contacto</legend><div className="grid grid-cols-2 gap-x-4 gap-y-4">
         <Campo etiqueta="Teléfono">
           <Input value={telefono} onChange={(e) => setTelefono(e.target.value)} />
         </Campo>
@@ -113,6 +118,7 @@ export function PacienteFormModal({ paciente, onCerrar, onGuardado }: Props) {
         <Campo etiqueta="Dirección" className="col-span-2">
           <Input value={direccion} onChange={(e) => setDireccion(e.target.value)} />
         </Campo>
+        </div></fieldset>
       </form>
     </Modal>
   );

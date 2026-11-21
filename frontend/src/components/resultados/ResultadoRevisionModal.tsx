@@ -1,4 +1,4 @@
-import { BadgeCheck, Check } from 'lucide-react';
+import { IconoValidacion, IconoCompletado } from '../icons/LabZenIcon';
 import { useState } from 'react';
 import { useToast } from '../../context/ToastContext';
 import { mensajeDeError } from '../../services/api';
@@ -111,13 +111,13 @@ export function ResultadoRevisionModal({ resultado: inicial, usuarioActualId, pu
 
         {puedeFirmar && !confirmando && (
           <div className="mt-3 flex justify-end">
-            <Button variante="primario" icono={<BadgeCheck className="h-4 w-4" aria-hidden />} onClick={() => setConfirmando(true)}>
+            <Button variante="primario" icono={<IconoValidacion className="h-4 w-4" aria-hidden />} onClick={() => setConfirmando(true)}>
               Validar resultado
             </Button>
           </div>
         )}
         {puedeFirmar && confirmando && (
-          <div className="mt-3 flex items-center justify-between gap-4 rounded border border-violeta-300 bg-violeta-50 px-4 py-3">
+          <div className="lz-validation-confirmation mt-3 flex items-center justify-between gap-4 rounded border border-violeta-300 bg-violeta-50 px-4 py-3">
             <p className="text-sm text-violeta-900">Al validar, el resultado queda firmado con su nombre y ya no podrá modificarse.</p>
             <div className="flex shrink-0 gap-2">
               <Button onClick={() => setConfirmando(false)} disabled={validando}>
@@ -150,7 +150,7 @@ function FirmaBloque({ rol, nombre, fecha, firmado }: FirmaProps) {
         {firmado && nombre ? (
           <>
             <span className="font-serif text-xl italic text-violeta-900">{nombre}</span>
-            <Check className="mb-1 h-5 w-5 text-emerald-600" aria-label="Firmado" />
+            <IconoCompletado className="mb-1 h-5 w-5 text-emerald-600" aria-label="Firmado" />
           </>
         ) : (
           <span className="pb-1 text-sm text-slate-400">Pendiente de firma</span>

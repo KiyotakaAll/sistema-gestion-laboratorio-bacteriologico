@@ -2,6 +2,7 @@
 import { X } from 'lucide-react';
 import { useId, useLayoutEffect, useRef, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
+import { useInternalUI } from '../../context/InternalUIContext';
 
 interface ModalProps {
   abierto: boolean;
@@ -11,6 +12,7 @@ interface ModalProps {
   ancho?: 'md' | 'lg' | 'xl';
   children: ReactNode;
   pie?: ReactNode;
+  variante?: 'dialogo' | 'lateral';
 }
 
 const ANCHO = {
@@ -101,7 +103,9 @@ export function Modal({
   ancho = 'lg',
   children,
   pie,
+  variante = 'dialogo',
 }: ModalProps) {
+  const interno = useInternalUI();
   const idTitulo = useId();
   const idModal = useId();
   const capa = useRef<HTMLDivElement>(null);
@@ -213,7 +217,7 @@ export function Modal({
   if (!abierto) return null;
 
   return createPortal(
-    <div ref={capa} data-modal-layer={idModal} className="fixed inset-0 z-50 flex animate-aparecer items-start justify-center overflow-y-auto bg-[#241833]/55 px-4 py-6 backdrop-blur-[2px] sm:px-6 sm:py-8">
+    <div ref={capa} data-modal-layer={idModal} className={`${interno ? 'labzen-internal lz-modal-layer ' : ''}${variante === 'lateral' ? 'lz-drawer-layer ' : ''}fixed inset-0 z-50 flex animate-aparecer items-start justify-center overflow-y-auto bg-[#241833]/55 px-4 py-6 backdrop-blur-[2px] sm:px-6 sm:py-8`}>
 
       <div
         className="fixed inset-0"
@@ -227,7 +231,7 @@ export function Modal({
         aria-modal="true"
         aria-labelledby={idTitulo}
         tabIndex={-1}
-        className={`relative flex max-h-[calc(100vh-3rem)] w-full flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-2xl outline-none sm:max-h-[calc(100vh-4rem)] ${ANCHO[ancho]}`}
+        className={`${variante === 'lateral' ? 'lz-drawer ' : ''}relative flex max-h-[calc(100vh-3rem)] w-full flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-2xl outline-none sm:max-h-[calc(100vh-4rem)] ${ANCHO[ancho]}`}
       >
 
         {/* Encabezado */}

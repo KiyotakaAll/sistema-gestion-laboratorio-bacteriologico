@@ -105,7 +105,7 @@ describe.each(casos)('Navegación del Dashboard: $rol', ({ rol, recepcion, resul
     await within(panel).findByText('15');
 
     for (const { estado, etiqueta, total } of indicadores) {
-      const indicador = within(panel).getByText(etiqueta).parentElement!;
+      const indicador = within(panel).getByLabelText(`${etiqueta} ${total}`);
       expect(within(indicador).getByText(String(total))).toBeInTheDocument();
       expect(muestrasApi.listar).toHaveBeenCalledWith({ estado, pageSize: 1 });
 
@@ -139,9 +139,9 @@ describe.each(casos)('Navegación del Dashboard: $rol', ({ rol, recepcion, resul
     // Los indicadores estáticos se omiten al navegar con el teclado.
     expect(primerBoton).toHaveFocus();
     await usuario.keyboard('{Enter}');
-    comprobarRuta(recepcion ? '/recepcion?estado=REGISTRADA' : '/validacion');
+    comprobarRuta(recepcion ? '/recepcion' : '/validacion');
     await usuario.keyboard(' ');
-    comprobarRuta(recepcion ? '/recepcion?estado=REGISTRADA' : '/validacion');
+    comprobarRuta(recepcion ? '/recepcion' : '/validacion');
   });
 
   it('mantiene la visibilidad, el conteo y el destino del indicador de resultados', async () => {
@@ -163,7 +163,7 @@ describe.each(casos)('Navegación del Dashboard: $rol', ({ rol, recepcion, resul
     }
   });
 
-  it('mantiene los permisos y destinos de las filas de ambas tablas', async () => {
+  it('mantiene los permisos y destinos de muestras y tareas pendientes', async () => {
     entrar(rol);
     const usuario = userEvent.setup();
     const filaMuestra = (await screen.findByText(muestra.codigoBarras)).closest('tr')!;
@@ -185,19 +185,34 @@ describe.each(casos)('Navegación del Dashboard: $rol', ({ rol, recepcion, resul
     }
 
     if (resultados) {
-      const filaResultado = (await screen.findByText('Urocultivo')).closest('tr')!;
+      const tarea = (await screen.findByText('Urocultivo')).closest('li')!;
+      const filaResultado = within(tarea).queryByRole('button');
       if (filasValidacion) {
-        expect(filaResultado).toHaveAttribute('tabindex', '0');
-        await usuario.click(filaResultado);
+        expect(filaResultado).not.toBeNull();
+        await usuario.click(filaResultado!);
         comprobarRuta('/validacion');
-        filaResultado.focus();
+        filaResultado!.focus();
         await usuario.keyboard(' ');
         comprobarRuta('/validacion');
       } else {
-        expect(filaResultado).not.toHaveAttribute('tabindex');
-        await usuario.click(filaResultado);
+        expect(filaResultado).toBeNull();
+        await usuario.click(tarea);
         comprobarRuta('/recepcion?muestraId=3');
       }
     }
+  });
+});
+
+
+describe.each(casos)('Resumen y accesos del panel: $rol', ({ rol, recepcion, resultados }) => {
+  it('obtiene el total de los cinco estados existentes y limita los accesos al rol', async () => {
+    entrar(rol);
+    const total = (await screen.findByText('Total de muestras')).parentElement!;
+    expect(await within(total).findByText('65')).toBeInTheDocument();
+    const accesos = screen.getByRole('region', { name: 'Accesos rápidos' });
+    expect(within(accesos).queryByRole('button', { name: /Pacientes y solicitudes/ }) !== null).toBe(['ADMINISTRADOR', 'RECEPCIONISTA'].includes(rol));
+    expect(within(accesos).queryByRole('button', { name: /Recepción de muestras/ }) !== null).toBe(recepcion);
+    expect(within(accesos).queryByRole('button', { name: /Ingresar resultados|Consultar worklist/ }) !== null).toBe(['ADMINISTRADOR', 'BACTERIOLOGO'].includes(rol));
+    expect(within(accesos).queryByRole('button', { name: /Consultar resultados/ }) !== null).toBe(resultados !== null);
   });
 });
