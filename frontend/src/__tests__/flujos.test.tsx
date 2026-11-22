@@ -700,21 +700,24 @@ describe('Formularios modales: cierre durante peticiones pendientes', () => {
 
 describe('Registro de muestra', () => {
   it('permite buscar la solicitud por cédula y registrar con exámenes', async () => {
-    vi.mocked(solicitudesApi.listar).mockResolvedValue(paginado([{ ...solicitud(ana), _count: { muestras: 0 } }]) as never);
+    // ID de solicitud distinto del ID de paciente: evita confundir ambas identidades.
+    const solicitudElegida = { ...solicitud(ana), id: 314, _count: { muestras: 0 } };
+    vi.mocked(solicitudesApi.listar).mockResolvedValue(paginado([solicitudElegida]) as never);
     vi.mocked(examenesApi.listar).mockResolvedValue([examen] as never);
-    vi.mocked(muestrasApi.registrar).mockResolvedValue({ ...muestra(ana), examenes: [], recepcionadoPor: null, solicitud: { ...solicitud(ana), paciente: ana } } as never);
+    vi.mocked(muestrasApi.registrar).mockResolvedValue({ ...muestra(ana), solicitudId: 314, examenes: [], recepcionadoPor: null, solicitud: { ...solicitudElegida, paciente: ana } } as never);
     vi.mocked(muestrasApi.obtener).mockResolvedValue({ ...muestra(ana), examenes: [], recepcionadoPor: null, solicitud: { ...solicitud(ana), paciente: ana } } as never);
     vi.mocked(muestrasApi.trazabilidad).mockResolvedValue([] as never);
     entrar('/recepcion', 'RECEPCIONISTA');
     const u = userEvent.setup();
     await u.click(await screen.findByRole('button', { name: /Registrar muestra/ }));
     await u.type(await screen.findByLabelText('Cédula del paciente'), '10001{Enter}');
+    await waitFor(() => expect(solicitudesApi.listar).toHaveBeenCalledWith({ cedula: '10001', pageSize: 20 }));
     await u.click(await screen.findByText('SOL-2026-000001'));
     await u.click(await screen.findByRole('checkbox', { name: /Urocultivo/ }));
     // El tipo de muestra se sugiere a partir del examen elegido.
     expect(screen.getByLabelText('Tipo de muestra')).toHaveValue('Orina');
     await u.click(screen.getAllByRole('button', { name: 'Registrar muestra' }).at(-1) as HTMLElement);
     await waitFor(() => expect(muestrasApi.registrar).toHaveBeenCalledTimes(1));
-    expect(muestrasApi.registrar).toHaveBeenCalledWith(expect.objectContaining({ solicitudId: 1, tipoMuestra: 'Orina', examenIds: [1] }));
+    expect(muestrasApi.registrar).toHaveBeenCalledWith(expect.objectContaining({ solicitudId: 314, tipoMuestra: 'Orina', examenIds: [1] }));
   });
 });
