@@ -1,0 +1,62 @@
+// SOLO ensayo. No representa una migración del esquema de LabZen.
+generator client {
+  provider = "prisma-client-js"
+  output   = "./generated/client"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("ENSAYO_DATABASE_URL")
+}
+
+model Paciente {
+  id                      Int         @id @default(autoincrement()) @db.UnsignedInt
+  cedula                  String?     @unique(map: "uq_ensayo_cedula") @db.VarChar(20)
+  estadoIdentificacion    String      @db.VarChar(32)
+  tipoDocumento           String?     @db.VarChar(3)
+  numeroDocumento         String?     @db.VarChar(20)
+  paisEmisorDocumento     String?     @db.VarChar(2)
+  claveIdentificacion     String?     @unique(map: "uq_ensayo_clave") @db.VarChar(64)
+  motivoAusenciaDocumento String?     @db.VarChar(255)
+  versionIdentificacion   Int         @default(0) @db.UnsignedInt
+  solicitudes            Solicitud[]
+
+  @@map("ensayo_pacientes")
+}
+
+model Solicitud {
+  id         Int      @id @default(autoincrement()) @db.UnsignedInt
+  pacienteId Int      @db.UnsignedInt
+  paciente   Paciente @relation(fields: [pacienteId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  muestras   Muestra[]
+
+  @@map("ensayo_solicitudes")
+}
+
+model Muestra {
+  id          Int             @id @default(autoincrement()) @db.UnsignedInt
+  solicitudId Int             @db.UnsignedInt
+  solicitud   Solicitud       @relation(fields: [solicitudId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  examenes    MuestraExamen[]
+
+  @@map("ensayo_muestras")
+}
+
+// Conserva el eslabón real Muestra -> MuestraExamen -> Resultado.
+// Omite catálogo de exámenes, usuarios y datos clínicos deliberadamente.
+model MuestraExamen {
+  id        Int        @id @default(autoincrement()) @db.UnsignedInt
+  muestraId Int        @db.UnsignedInt
+  muestra   Muestra    @relation(fields: [muestraId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  resultado Resultado?
+
+  @@map("ensayo_muestra_examen")
+}
+
+model Resultado {
+  id              Int           @id @default(autoincrement()) @db.UnsignedInt
+  muestraExamenId Int           @unique @db.UnsignedInt
+  muestraExamen   MuestraExamen @relation(fields: [muestraExamenId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@map("ensayo_resultados")
+}
