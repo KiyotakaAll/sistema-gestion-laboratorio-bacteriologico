@@ -11,7 +11,7 @@ import { authApi } from '../services/laboratorio';
 
 vi.mock('../services/laboratorio', () => ({
   authApi: { perfil: vi.fn() },
-  pacientesApi: { listar: vi.fn(async () => ({ data: [], total: 0, page: 1, totalPages: 1 })) },
+  pacientesApi: { capacidades: vi.fn(async () => ({ identificacionPacientes: false })), listar: vi.fn(async () => ({ data: [], total: 0, page: 1, totalPages: 1 })) },
 }));
 
 let ancho = 1280;

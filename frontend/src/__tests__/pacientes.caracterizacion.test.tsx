@@ -12,7 +12,7 @@ import type { Paciente, PacienteDetalle, Paginado, SolicitudDetalle } from '../t
 
 vi.mock('../services/laboratorio', () => ({
   authApi: { perfil: vi.fn() },
-  pacientesApi: { listar: vi.fn(), obtener: vi.fn(), crear: vi.fn(), actualizar: vi.fn() },
+  pacientesApi: { capacidades: vi.fn(async () => ({ identificacionPacientes: false })), listar: vi.fn(), obtener: vi.fn(), crear: vi.fn(), actualizar: vi.fn() },
   solicitudesApi: { crear: vi.fn() },
 }));
 
@@ -41,6 +41,7 @@ async function llenarObligatorios(u: ReturnType<typeof userEvent.setup>, cedula 
 
 beforeEach(() => {
   vi.resetAllMocks();
+  vi.mocked(pacientesApi.capacidades).mockResolvedValue({ identificacionPacientes: false });
   vi.mocked(pacientesApi.crear).mockResolvedValue(paciente);
   vi.mocked(pacientesApi.actualizar).mockResolvedValue(paciente);
   vi.mocked(pacientesApi.obtener).mockResolvedValue(detalle);
@@ -125,7 +126,7 @@ describe('Registro y edición actuales de pacientes', () => {
     vi.mocked(pacientesApi.crear).mockRejectedValueOnce({ isAxiosError: true, response: { status: 409,
       data: { error: { code: 'PACIENTE_DUPLICADO', message: 'Ya existe un paciente con esa cédula.', details: { pacienteId: 73 } } } } });
     const { u, onGuardado } = formulario();
-    await llenarObligatorios(u, paciente.cedula);
+    await llenarObligatorios(u, paciente.cedula!);
     await u.click(screen.getByRole('button', { name: 'Registrar paciente' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('Ya existe un paciente con esa cédula.');
     expect(screen.getByLabelText('Cédula')).toHaveValue(paciente.cedula);
@@ -148,17 +149,17 @@ describe('Registro y edición actuales de pacientes', () => {
     expect(onGuardado).toHaveBeenCalledWith(paciente);
   });
 
-  it('al borrar contactos en edición envía undefined y omite la cédula', async () => {
+  it('al borrar contactos envía null explícito; omitir un campo ya no lo borra', async () => {
     const { u } = formulario(paciente);
     for (const etiqueta of ['Teléfono', 'Correo electrónico', 'Dirección']) await u.clear(screen.getByLabelText(etiqueta));
     await u.click(screen.getByRole('button', { name: 'Guardar cambios' }));
     await waitFor(() => expect(pacientesApi.actualizar).toHaveBeenCalledTimes(1));
     const cuerpo = vi.mocked(pacientesApi.actualizar).mock.calls[0]![1];
     expect(cuerpo).toEqual({ nombres: paciente.nombres, apellidos: paciente.apellidos,
-      fechaNacimiento: '1990-05-12', sexo: 'F', telefono: undefined, email: undefined, direccion: undefined });
+      fechaNacimiento: '1990-05-12', sexo: 'F', telefono: null, email: null, direccion: null });
     expect(cuerpo).not.toHaveProperty('cedula');
-    // JSON omitirá los undefined; la suite backend caracteriza su conversión actual a null.
-    expect(JSON.parse(JSON.stringify(cuerpo))).not.toHaveProperty('telefono');
+    // Corrección 1.3C: limpiar se comunica explícitamente también en JSON.
+    expect(JSON.parse(JSON.stringify(cuerpo))).toHaveProperty('telefono', null);
   });
 });
 

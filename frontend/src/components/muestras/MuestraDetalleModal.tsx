@@ -1,3 +1,4 @@
+import { identificacionTexto } from '../../utils/identificacion';
 import { IconoRechazado, IconoRecepcionMuestras, IconoProcesamiento } from '../icons/LabZenIcon';
 import { useMemo, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
@@ -6,7 +7,7 @@ import { useCarga } from '../../hooks/useCarga';
 import { mensajeDeError } from '../../services/api';
 import { muestrasApi } from '../../services/laboratorio';
 import type { EventoTrazabilidad, MuestraDetalle } from '../../types/api';
-import { SEXO_ETIQUETA, calcularEdad, formatFechaHora, nombrePaciente } from '../../utils/format';
+import { SEXO_ETIQUETA, edadALaToma, formatFechaHora, nombrePaciente } from '../../utils/format';
 import { Alert } from '../UI/Alert';
 import { Badge, ETIQUETA_ESTADO_MUESTRA, ETIQUETA_ESTADO_RESULTADO, EstadoMuestraBadge, EstadoResultadoBadge, PrioridadBadge } from '../UI/Badge';
 import { Button } from '../UI/Button';
@@ -138,8 +139,8 @@ export function MuestraDetalleModal({ muestraId, onCerrar, onCambio }: Props) {
             <Dato etiqueta="Paciente" className="col-span-2">
               <span className="font-semibold">{nombrePaciente(m.solicitud.paciente)}</span>
             </Dato>
-            <Dato etiqueta="Cédula">{m.solicitud.paciente.cedula}</Dato>
-            <Dato etiqueta="Edad y sexo">{`${calcularEdad(m.solicitud.paciente.fechaNacimiento)} años, ${SEXO_ETIQUETA[m.solicitud.paciente.sexo]}`}</Dato>
+            <Dato etiqueta="Identificación">{identificacionTexto(m.solicitud.paciente)}</Dato>
+            <Dato etiqueta="Edad a la toma y sexo">{`${edadALaToma(m.solicitud.paciente.fechaNacimiento, m.fechaToma)}, ${SEXO_ETIQUETA[m.solicitud.paciente.sexo]}`}</Dato>
             <Dato etiqueta="Solicitud">
               <span className="font-mono text-xs">{m.solicitud.codigo}</span>
             </Dato>

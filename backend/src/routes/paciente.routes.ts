@@ -9,10 +9,12 @@ router.use(authenticate);
 
 // Lectura: cualquier rol autenticado (el bacteriólogo necesita ver datos del paciente).
 router.get('/', pacienteController.listar);
+router.get('/capacidades', pacienteController.capacidades);
 router.get('/:id', pacienteController.obtener);
 
 // Admisión: solo recepción (y administración).
 router.post('/', requireRoles('RECEPCIONISTA', 'ADMINISTRADOR'), pacienteController.crear);
 router.put('/:id', requireRoles('RECEPCIONISTA', 'ADMINISTRADOR'), pacienteController.actualizar);
+router.patch('/:id/identificacion', requireRoles('RECEPCIONISTA', 'ADMINISTRADOR'), pacienteController.actualizarIdentificacion);
 
 export default router;

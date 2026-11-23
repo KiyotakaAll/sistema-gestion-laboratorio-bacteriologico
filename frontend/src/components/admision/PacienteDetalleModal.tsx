@@ -6,7 +6,9 @@ import { useCarga } from '../../hooks/useCarga';
 import { detallesDeError, mensajeDeError, type DetalleCampo } from '../../services/api';
 import { pacientesApi, solicitudesApi } from '../../services/laboratorio';
 import type { PacienteDetalle, Prioridad } from '../../types/api';
-import { SEXO_ETIQUETA, calcularEdad, formatFechaDia, formatFechaHora, nombrePaciente, opcional } from '../../utils/format';
+import { SEXO_ETIQUETA, formatEdad, formatFechaDia, formatFechaHora, nombrePaciente, opcional } from '../../utils/format';
+import { identificacionTexto } from '../../utils/identificacion';
+import { IdentificacionModal } from './IdentificacionModal';
 import { PrioridadBadge } from '../UI/Badge';
 import { Alert } from '../UI/Alert';
 import { Button } from '../UI/Button';
@@ -32,6 +34,7 @@ export function PacienteDetalleModal({ pacienteId, puedeEscribir, onCerrar, onCa
   const toast = useToast();
   const { datos: paciente, cargando, error, recargar } = useCarga(() => pacientesApi.obtener(pacienteId), [pacienteId]);
   const [editando, setEditando] = useState(false);
+  const [identificando, setIdentificando] = useState(false);
   const [nuevaSolicitud, setNuevaSolicitud] = useState(false);
   const [guardandoSolicitud, setGuardandoSolicitud] = useState(false);
 
@@ -66,7 +69,7 @@ export function PacienteDetalleModal({ pacienteId, puedeEscribir, onCerrar, onCa
         abierto
         ancho="xl"
         titulo={paciente ? nombrePaciente(paciente) : 'Paciente'}
-        subtitulo={paciente ? `Cédula ${paciente.cedula}` : undefined}
+        subtitulo={paciente ? (paciente.identificacion ? identificacionTexto(paciente) : paciente.cedula ? `Cédula ${paciente.cedula}` : 'Identificación no disponible') : undefined}
         onCerrar={() => { if (!guardandoSolicitud) onCerrar(); }}
         pie={<Button onClick={onCerrar} disabled={guardandoSolicitud}>Cerrar</Button>}
       >
@@ -76,7 +79,9 @@ export function PacienteDetalleModal({ pacienteId, puedeEscribir, onCerrar, onCa
           <>
             <div className="flex items-start justify-between gap-5 rounded-xl border border-line bg-subtle p-5">
                 <Datos columnas={4}>
-                <Dato etiqueta="Edad">{`${calcularEdad(paciente.fechaNacimiento)} años`}</Dato>
+                <Dato etiqueta="Edad actual">{formatEdad(paciente.fechaNacimiento)}</Dato>
+                {paciente.identificacion && 'motivoAusencia' in paciente.identificacion &&
+                  <Dato etiqueta="Motivo de ausencia documental">{paciente.identificacion.motivoAusencia}</Dato>}
                 <Dato etiqueta="Fecha de nacimiento">{formatFechaDia(paciente.fechaNacimiento)}</Dato>
                 <Dato etiqueta="Sexo">{SEXO_ETIQUETA[paciente.sexo]}</Dato>
                 <Dato etiqueta="Teléfono">{paciente.telefono}</Dato>
@@ -84,9 +89,14 @@ export function PacienteDetalleModal({ pacienteId, puedeEscribir, onCerrar, onCa
                 <Dato etiqueta="Dirección" className="col-span-2">{paciente.direccion}</Dato>
               </Datos>
               {puedeEscribir && (
-                <Button tamano="sm" icono={<IconoEditar className="h-3.5 w-3.5" aria-hidden />} onClick={() => setEditando(true)}>
+                <div className="flex flex-col gap-3"><Button tamano="sm" icono={<IconoEditar className="h-3.5 w-3.5" aria-hidden />} onClick={() => setEditando(true)}>
                   Editar datos
                 </Button>
+                {paciente.identificacion && paciente.versionIdentificacion !== undefined &&
+                  <Button tamano="sm" onClick={() => setIdentificando(true)}>
+                    {paciente.identificacion.estado === 'LEGADO_POR_REVISAR' ? 'Revisar identificación' : 'Actualizar identificación'}
+                  </Button>}
+                </div>
               )}
             </div>
 
@@ -138,6 +148,8 @@ export function PacienteDetalleModal({ pacienteId, puedeEscribir, onCerrar, onCa
           }}
         />
       )}
+      {identificando && paciente && <IdentificacionModal paciente={paciente} onCerrar={() => setIdentificando(false)}
+        onGuardado={() => { setIdentificando(false); recargar(); onCambio(); }} />}
     </>
   );
 }

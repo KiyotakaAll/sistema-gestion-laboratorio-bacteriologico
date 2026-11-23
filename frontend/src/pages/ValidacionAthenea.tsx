@@ -1,3 +1,4 @@
+import { identificacionTexto } from '../utils/identificacion';
 import { IconoValidacion } from '../components/icons/LabZenIcon';
 import { useMemo, useState } from 'react';
 import { EstadoResultadoBadge, ETIQUETA_ESTADO_RESULTADO, PrioridadBadge } from '../components/UI/Badge';
@@ -28,7 +29,7 @@ export default function ValidacionAthenea() {
     () => [
       { id: 'prioridad', header: 'Prioridad', accessor: (r) => r.muestraExamen.muestra.solicitud.prioridad, cell: (r) => <PrioridadBadge prioridad={r.muestraExamen.muestra.solicitud.prioridad} />, width: '6.5rem' },
       { id: 'paciente', header: 'Paciente', accessor: (r) => nombrePaciente(r.muestraExamen.muestra.solicitud.paciente), cell: (r) => <span className="font-semibold text-slate-900">{nombrePaciente(r.muestraExamen.muestra.solicitud.paciente)}</span> },
-      { id: 'cedula', header: 'Cédula', accessor: (r) => r.muestraExamen.muestra.solicitud.paciente.cedula, width: '8rem' },
+      { id: 'cedula', header: 'Identificación', accessor: (r) => identificacionTexto(r.muestraExamen.muestra.solicitud.paciente), width: '8rem' },
       { id: 'examen', header: 'Examen', accessor: (r) => r.muestraExamen.examen.nombre },
       { id: 'bacteria', header: 'Bacteria aislada', accessor: (r) => r.bacteriaAislada, cell: (r) => (r.bacteriaAislada ? <span className="italic">{r.bacteriaAislada}</span> : <span className="text-slate-400">—</span>) },
       { id: 'registro', header: 'Registró', accessor: (r) => r.registradoPor.nombreCompleto },

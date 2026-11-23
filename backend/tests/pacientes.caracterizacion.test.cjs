@@ -63,6 +63,9 @@ const edicion = () => {
   return datos;
 };
 const llamadas = (metodo) => consultas.filter((c) => c.metodo === metodo);
+// 1.3C: selección explícita mantiene lecturas compatibles con la BD todavía antigua.
+const selectAntiguo = Object.fromEntries(['id', 'cedula', 'nombres', 'apellidos', 'fechaNacimiento',
+  'sexo', 'telefono', 'email', 'direccion', 'createdAt', 'updatedAt'].map(k => [k, true]));
 
 // Router, autenticación, controlador, validación y servicio reales; sin app.listen ni sockets.
 function peticion(method, url = '/', body = {}, query = {}) {
@@ -157,16 +160,16 @@ for (const [campo, valor] of [
   assert.deepEqual(consultas, []);
 });
 
-test('LIMITACIÓN: nacimiento null se convierte en 1970; todavía no se valida como fecha civil estricta', async () => {
+test('CORREGIDO 1.3C: nacimiento null se rechaza sin convertirlo a 1970', async () => {
   const r = await peticion('POST', '/', { ...valido, fechaNacimiento: null });
-  assert.equal(r.status, 201);
-  assert.equal(r.body.data.fechaNacimiento, '1970-01-01T00:00:00.000Z');
+  assert.equal(r.status, 400);
+  assert.deepEqual(consultas, []);
 });
 
-test('LIMITACIÓN: JavaScript normaliza el 30 de febrero antes de validar el nacimiento', async () => {
+test('CORREGIDO 1.3C: 30 de febrero se rechaza sin normalizar a marzo', async () => {
   const r = await peticion('POST', '/', { ...valido, fechaNacimiento: '2026-02-30' });
-  assert.equal(r.status, 201);
-  assert.equal(r.body.data.fechaNacimiento, '2026-03-02T00:00:00.000Z');
+  assert.equal(r.status, 400);
+  assert.deepEqual(consultas, []);
 });
 
 test('actualización: busca y escribe por ID, conserva cédula y no solicita cambios de relaciones', async () => {
@@ -185,12 +188,11 @@ test('actualización: busca y escribe por ID, conserva cédula y no solicita cam
   assert.equal(llamadas('logAuditoria.create')[0].args.data.entidadId, 73);
 });
 
-test('LIMITACIÓN: PUT con otra cédula la ignora silenciosamente y devuelve 200', async () => {
+test('CORREGIDO 1.3C: PUT rechaza otra cédula; se exige cambio explícito de identificación', async () => {
   encontrado = { id: 73 };
   const r = await peticion('PUT', '/73', { ...edicion(), cedula: 'CAMBIO-999' });
-  assert.equal(r.status, 200);
-  assert.equal(r.body.data.cedula, valido.cedula);
-  assert.equal(Object.hasOwn(llamadas('paciente.update')[0].args.data, 'cedula'), false);
+  assert.equal(r.status, 400);
+  assert.equal(llamadas('paciente.update').length, 0);
 });
 
 test('actualización: paciente inexistente devuelve 404 sin escritura ni auditoría', async () => {
@@ -210,15 +212,15 @@ for (const campo of ['nombres', 'apellidos', 'fechaNacimiento', 'sexo']) {
   });
 }
 
-test('LIMITACIÓN: PUT borra contactos opcionales omitidos en lugar de conservarlos', async () => {
+test('CORREGIDO 1.3C: PUT conserva contactos omitidos', async () => {
   encontrado = { id: 73 };
   const { telefono, email, direccion, ...datos } = edicion();
   const r = await peticion('PUT', '/73', datos);
   assert.equal(r.status, 200);
   const cambio = llamadas('paciente.update')[0].args.data;
-  assert.equal(cambio.telefono, null);
-  assert.equal(cambio.email, null);
-  assert.equal(cambio.direccion, null);
+  assert.equal(Object.hasOwn(cambio, 'telefono'), false);
+  assert.equal(Object.hasOwn(cambio, 'email'), false);
+  assert.equal(Object.hasOwn(cambio, 'direccion'), false);
   // Se comprueba el comando real enviado a Prisma, no una persistencia inventada por el doble.
 });
 
@@ -238,7 +240,7 @@ for (const q of ['00Ab', 'Persona', 'Paciente']) {
     assert.equal(r.status, 200);
     const where = { OR: [{ cedula: { contains: q } }, { apellidos: { contains: q } }, { nombres: { contains: q } }] };
     assert.deepEqual(llamadas('paciente.findMany')[0].args, {
-      where, orderBy: [{ apellidos: 'asc' }, { nombres: 'asc' }], skip: 2, take: 2,
+      where, orderBy: [{ apellidos: 'asc' }, { nombres: 'asc' }], skip: 2, take: 2, select: selectAntiguo,
     });
     assert.deepEqual(llamadas('paciente.count')[0].args, { where });
     assert.deepEqual(Object.keys(r.body).sort(), ['data', 'total', 'page', 'pageSize', 'totalPages'].sort());
@@ -268,7 +270,7 @@ test('detalle: usa ID y solicita las últimas veinte solicitudes, no todo el his
   assert.equal(r.status, 200);
   assert.equal(r.body.data.solicitudes[0].pacienteId, 73);
   assert.deepEqual(llamadas('paciente.findUnique')[0].args, {
-    where: { id: 73 }, include: { solicitudes: {
+    where: { id: 73 }, select: { ...selectAntiguo, solicitudes: {
       orderBy: { fechaSolicitud: 'desc' }, take: 20, include: { _count: { select: { muestras: true } } },
     } },
   });

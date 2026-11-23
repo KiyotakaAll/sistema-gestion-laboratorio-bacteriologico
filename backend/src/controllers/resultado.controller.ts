@@ -1,5 +1,6 @@
 import * as resultadoService from '../services/resultado.service';
-import { asyncHandler, auditContext } from '../utils/http';
+import { auditContext } from '../utils/http';
+import { handlerConPacientes as asyncHandler } from '../utils/http-pacientes';
 import { idParamSchema } from '../validators/common.validator';
 import {
   actualizarResultadoSchema,

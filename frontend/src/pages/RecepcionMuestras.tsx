@@ -1,3 +1,4 @@
+import { identificacionTexto } from '../utils/identificacion';
 import { ArrowRight, RotateCcw } from 'lucide-react';
 import { IconoNuevo, IconoMuestras } from '../components/icons/LabZenIcon';
 import { useEffect, useMemo, useState } from 'react';
@@ -94,7 +95,7 @@ export default function RecepcionMuestras() {
     () => [
       { id: 'codigo', header: 'Código de barras', accessor: (m) => m.codigoBarras, width: '10rem', cell: (m) => <span className="font-mono text-xs">{m.codigoBarras}</span> },
       { id: 'paciente', header: 'Paciente', accessor: (m) => nombrePaciente(m.solicitud.paciente), cell: (m) => <span className="font-semibold text-slate-900">{nombrePaciente(m.solicitud.paciente)}</span> },
-      { id: 'cedula', header: 'Cédula', accessor: (m) => m.solicitud.paciente.cedula, width: '8rem' },
+      { id: 'cedula', header: 'Identificación', accessor: (m) => identificacionTexto(m.solicitud.paciente), width: '8rem' },
       { id: 'examenes', header: 'Exámenes', accessor: (m) => m.examenes.map((e) => e.examen.codigo).join(', ') },
       { id: 'tipo', header: 'Tipo', accessor: (m) => m.tipoMuestra },
       { id: 'prioridad', header: 'Prioridad', accessor: (m) => m.solicitud.prioridad, cell: (m) => <PrioridadBadge prioridad={m.solicitud.prioridad} />, width: '6.5rem' },
@@ -148,7 +149,7 @@ export default function RecepcionMuestras() {
               <input className={`${claseFiltro} font-mono text-xs`} aria-label="Filtrar por código de barras" placeholder="Escanear o escribir código" value={codigo}
                 onChange={(e) => alFiltrar(setCodigo)(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') void abrirPorCodigo(); }} />
             </Campo>
-            <Campo etiqueta="Cédula"><input className={claseFiltro} aria-label="Filtrar por cédula" placeholder="Buscar identificación" value={cedula} onChange={(e) => alFiltrar(setCedula)(e.target.value)} /></Campo>
+            <Campo etiqueta="Identificación"><input className={claseFiltro} aria-label="Filtrar por identificación" placeholder="Buscar identificación" value={cedula} onChange={(e) => alFiltrar(setCedula)(e.target.value)} /></Campo>
             <Campo etiqueta="Toma desde"><DatePicker aria-label="Toma desde" value={desde} onValueChange={alFiltrar(setDesde)} /></Campo>
             <Campo etiqueta="Toma hasta"><DatePicker aria-label="Toma hasta" value={hasta} onValueChange={alFiltrar(setHasta)} /></Campo>
             <Button variante="fantasma" icono={<RotateCcw size={15} aria-hidden />} onClick={() => { setEstado(''); setCodigo(''); setCedula(''); setDesde(''); setHasta(''); setPagina(1); }}>Limpiar filtros</Button>

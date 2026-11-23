@@ -1,6 +1,7 @@
 import type { AxiosResponse } from 'axios';
 import type {
   EdicionPaciente,
+  IdentificacionEntrada,
   EstadoMuestra,
   EstadoResultado,
   EventoTrazabilidad,
@@ -51,12 +52,15 @@ export const usuariosApi = {
 };
 
 export const pacientesApi = {
-  listar: (params: Paginacion & { q?: string }) =>
+  capacidades: () => api.get<{ data: { identificacionPacientes: boolean; registroPacientes?: boolean } }>('/pacientes/capacidades').then(datos),
+  listar: (params: Paginacion & { q?: string; tipoDocumento?: string; numeroDocumento?: string; paisEmisorDocumento?: string }) =>
     api.get<Paginado<Paciente>>('/pacientes', { params }).then(pagina),
   obtener: (id: number) => api.get<{ data: PacienteDetalle }>(`/pacientes/${id}`).then(datos),
   crear: (cuerpo: NuevoPaciente) => api.post<{ data: Paciente }>('/pacientes', cuerpo).then(datos),
   actualizar: (id: number, cuerpo: EdicionPaciente) =>
     api.put<{ data: Paciente }>(`/pacientes/${id}`, cuerpo).then(datos),
+  identificar: (id: number, cuerpo: { identificacion: IdentificacionEntrada; motivoCambio: string; versionIdentificacion: number }) =>
+    api.patch<{ data: Paciente }>(`/pacientes/${id}/identificacion`, cuerpo).then(datos),
 };
 
 export const solicitudesApi = {

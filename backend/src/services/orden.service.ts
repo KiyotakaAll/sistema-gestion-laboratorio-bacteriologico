@@ -1,3 +1,4 @@
+import { seleccionPaciente, seleccionPacienteResumen, filtroDocumento } from './identificacion-paciente';
 import { Prisma } from '@prisma/client';
 import { prisma } from '../config/prisma';
 import type { AuditContext, Paginado } from '../types/dto';
@@ -10,14 +11,14 @@ import { registrarLog } from './auditoria.service';
 
 const MAX_REINTENTOS_CODIGO = 3;
 
-const solicitudInclude = {
-  paciente: true,
+const solicitudInclude = () => ({
+  paciente: { select: seleccionPaciente() },
   registradoPor: { select: { id: true, username: true, nombreCompleto: true } },
   muestras: {
     include: { examenes: { include: { examen: { select: { id: true, codigo: true, nombre: true } } } } },
     orderBy: { fechaToma: 'asc' },
   },
-} satisfies Prisma.SolicitudInclude;
+}) satisfies Prisma.SolicitudInclude;
 
 /** Calcula el siguiente código SOL-AAAA-NNNNNN del año en curso. */
 async function siguienteCodigo(tx: Prisma.TransactionClient): Promise<string> {
@@ -67,7 +68,7 @@ export async function crearSolicitud(input: CrearSolicitudInput, ctx: AuditConte
             prioridad: input.prioridad,
             observaciones: input.observaciones,
           },
-          include: solicitudInclude,
+          include: solicitudInclude(),
         });
 
         await registrarLog(tx, {
@@ -96,7 +97,7 @@ export async function listarSolicitudes(filtros: ListarSolicitudesQuery) {
   const where: Prisma.SolicitudWhereInput = {
     ...(filtros.pacienteId ? { pacienteId: filtros.pacienteId } : {}),
     ...(filtros.prioridad ? { prioridad: filtros.prioridad } : {}),
-    ...(filtros.cedula ? { paciente: { cedula: { contains: filtros.cedula } } } : {}),
+    ...(filtros.cedula ? { paciente: filtroDocumento(filtros.cedula) } : {}),
     ...(filtros.desde || filtros.hasta
       ? {
           fechaSolicitud: {
@@ -111,7 +112,7 @@ export async function listarSolicitudes(filtros: ListarSolicitudesQuery) {
     prisma.solicitud.findMany({
       where,
       include: {
-        paciente: { select: { id: true, cedula: true, nombres: true, apellidos: true } },
+        paciente: { select: seleccionPacienteResumen() },
         _count: { select: { muestras: true } },
       },
       orderBy: { fechaSolicitud: 'desc' },
@@ -132,7 +133,7 @@ export async function listarSolicitudes(filtros: ListarSolicitudesQuery) {
 }
 
 export async function obtenerSolicitudPorId(id: number) {
-  const solicitud = await prisma.solicitud.findUnique({ where: { id }, include: solicitudInclude });
+  const solicitud = await prisma.solicitud.findUnique({ where: { id }, include: solicitudInclude() });
   if (!solicitud) {
     throw new AppError(404, 'La solicitud no existe.', 'SOLICITUD_NO_ENCONTRADA');
   }

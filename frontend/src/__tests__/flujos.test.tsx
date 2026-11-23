@@ -18,7 +18,7 @@ import type { RolNombre } from '../types/api';
 
 vi.mock('../services/laboratorio', () => ({
   authApi: { perfil: vi.fn(), login: vi.fn() },
-  pacientesApi: { listar: vi.fn(), obtener: vi.fn(), crear: vi.fn(), actualizar: vi.fn() },
+  pacientesApi: { capacidades: vi.fn(async () => ({ identificacionPacientes: false })), listar: vi.fn(), obtener: vi.fn(), crear: vi.fn(), actualizar: vi.fn() },
   solicitudesApi: { listar: vi.fn(), obtener: vi.fn(), crear: vi.fn() },
   examenesApi: { listar: vi.fn() },
   muestrasApi: { listar: vi.fn(), obtener: vi.fn(), porCodigo: vi.fn(), trazabilidad: vi.fn(), registrar: vi.fn(), receptar: vi.fn(), procesar: vi.fn(), rechazar: vi.fn() },
@@ -543,7 +543,7 @@ async function prepararGuardadoModal(caso: GuardadoModal) {
     vi.mocked(muestrasApi.registrar).mockReturnValue(pendiente.promesa as never);
     entrar('/recepcion', 'RECEPCIONISTA');
     await usuario.click(await screen.findByRole('button', { name: 'Registrar muestra' }));
-    await usuario.type(screen.getByLabelText('Cédula del paciente'), `${ana.cedula}{Enter}`);
+    await usuario.type(screen.getByLabelText('Identificación del paciente'), `${ana.cedula}{Enter}`);
     await usuario.click(await screen.findByText(solicitud(ana).codigo));
     await usuario.click(screen.getByRole('checkbox', { name: /Urocultivo/ }));
     await usuario.type(screen.getByLabelText('Sitio anatómico'), 'Sitio de prueba');
@@ -710,7 +710,7 @@ describe('Registro de muestra', () => {
     entrar('/recepcion', 'RECEPCIONISTA');
     const u = userEvent.setup();
     await u.click(await screen.findByRole('button', { name: /Registrar muestra/ }));
-    await u.type(await screen.findByLabelText('Cédula del paciente'), '10001{Enter}');
+    await u.type(await screen.findByLabelText('Identificación del paciente'), '10001{Enter}');
     await waitFor(() => expect(solicitudesApi.listar).toHaveBeenCalledWith({ cedula: '10001', pageSize: 20 }));
     await u.click(await screen.findByText('SOL-2026-000001'));
     await u.click(await screen.findByRole('checkbox', { name: /Urocultivo/ }));

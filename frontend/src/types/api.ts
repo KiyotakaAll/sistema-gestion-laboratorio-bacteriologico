@@ -52,7 +52,9 @@ export interface ApiErrorBody {
 
 export interface Paciente {
   id: number;
-  cedula: string;
+  cedula: string | null;
+  identificacion?: IdentificacionPublica;
+  versionIdentificacion?: number;
   nombres: string;
   apellidos: string;
   fechaNacimiento: string;
@@ -64,7 +66,18 @@ export interface Paciente {
   updatedAt: string;
 }
 
-export type PacienteResumen = Pick<Paciente, 'id' | 'cedula' | 'nombres' | 'apellidos'>;
+export type PacienteResumen = Pick<Paciente, 'id' | 'cedula' | 'nombres' | 'apellidos' | 'identificacion' | 'versionIdentificacion'>;
+
+export type TipoDocumento = 'CC' | 'TI' | 'RC' | 'CE' | 'PA' | 'PPT';
+export type IdentificacionEntrada =
+  | { estado: 'DOCUMENTADO'; tipo: TipoDocumento; numero: string; paisEmisor?: string }
+  | { estado: 'SIN_DOCUMENTO_ASIGNADO' | 'DOCUMENTO_NO_DISPONIBLE'; tipo: null; numero: null;
+      paisEmisor: null; motivoAusencia: string };
+export type IdentificacionPublica =
+  | { estado: 'DOCUMENTADO'; tipo: TipoDocumento; numero: string; paisEmisor: string }
+  | { estado: 'SIN_DOCUMENTO_ASIGNADO' | 'DOCUMENTO_NO_DISPONIBLE'; tipo: null; numero: null;
+      paisEmisor: null; motivoAusencia: string }
+  | { estado: 'LEGADO_POR_REVISAR'; tipo: null; numero: null; paisEmisor: null; valorLegado: string };
 
 export interface SolicitudBase {
   id: number;
@@ -206,18 +219,21 @@ export interface WorklistItem extends MuestraExamenBase {
 
 /* ---------- Cuerpos de petición ---------- */
 
-export interface NuevoPaciente {
-  cedula: string;
+interface DatosPaciente {
   nombres: string;
   apellidos: string;
   fechaNacimiento: string;
   sexo: Sexo;
-  telefono?: string;
-  email?: string;
-  direccion?: string;
+  telefono?: string | null;
+  email?: string | null;
+  direccion?: string | null;
 }
 
-export type EdicionPaciente = Omit<NuevoPaciente, 'cedula'>;
+export type NuevoPaciente = DatosPaciente & (
+  | { cedula: string; identificacion?: never }
+  | { cedula?: never; identificacion: IdentificacionEntrada }
+);
+export type EdicionPaciente = DatosPaciente;
 
 export interface NuevaSolicitud {
   pacienteId: number;

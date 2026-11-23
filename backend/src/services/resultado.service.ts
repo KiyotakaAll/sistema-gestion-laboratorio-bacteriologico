@@ -1,3 +1,4 @@
+import { seleccionPaciente } from './identificacion-paciente';
 import { EstadoMuestra, EstadoResultado, Prisma } from '@prisma/client';
 import { prisma } from '../config/prisma';
 import type { AuditContext, Paginado } from '../types/dto';
@@ -12,17 +13,17 @@ import { registrarLog } from './auditoria.service';
 
 const usuarioResumen = { select: { id: true, username: true, nombreCompleto: true } } as const;
 
-const resultadoInclude = {
+const resultadoInclude = () => ({
   antibiograma: { orderBy: { antibiotico: 'asc' } },
   registradoPor: usuarioResumen,
   validadoPor: usuarioResumen,
   muestraExamen: {
     include: {
       examen: true,
-      muestra: { include: { solicitud: { include: { paciente: true } } } },
+      muestra: { include: { solicitud: { include: { paciente: { select: seleccionPaciente() } } } } },
     },
   },
-} satisfies Prisma.ResultadoInclude;
+}) satisfies Prisma.ResultadoInclude;
 
 /**
  * Worklist del bacteriólogo: exámenes de muestras EN_PROCESAMIENTO.
@@ -37,7 +38,7 @@ export async function obtenerWorklist({ soloPendientes }: WorklistQuery) {
     },
     include: {
       examen: true,
-      muestra: { include: { solicitud: { include: { paciente: true } } } },
+      muestra: { include: { solicitud: { include: { paciente: { select: seleccionPaciente() } } } } },
       resultado: { include: { antibiograma: { orderBy: { antibiotico: 'asc' } } } },
     },
     orderBy: [
@@ -63,7 +64,7 @@ export async function listarResultados(filtros: ListarResultadosQuery) {
   const [data, total] = await prisma.$transaction([
     prisma.resultado.findMany({
       where,
-      include: resultadoInclude,
+      include: resultadoInclude(),
       orderBy: { fechaRegistro: 'desc' },
       skip: (filtros.page - 1) * filtros.pageSize,
       take: filtros.pageSize,
@@ -82,7 +83,7 @@ export async function listarResultados(filtros: ListarResultadosQuery) {
 }
 
 export async function obtenerResultadoPorId(id: number) {
-  const resultado = await prisma.resultado.findUnique({ where: { id }, include: resultadoInclude });
+  const resultado = await prisma.resultado.findUnique({ where: { id }, include: resultadoInclude() });
   if (!resultado) {
     throw new AppError(404, 'El resultado no existe.', 'RESULTADO_NO_ENCONTRADO');
   }
@@ -166,7 +167,7 @@ export async function registrarResultado(input: RegistrarResultadoInput, ctx: Au
       }
     }
 
-    return tx.resultado.findUniqueOrThrow({ where: { id: resultado.id }, include: resultadoInclude });
+    return tx.resultado.findUniqueOrThrow({ where: { id: resultado.id }, include: resultadoInclude() });
   });
 }
 
@@ -215,7 +216,7 @@ export async function actualizarResultado(id: number, input: ActualizarResultado
       ip: ctx.ip,
     });
 
-    return tx.resultado.findUniqueOrThrow({ where: { id }, include: resultadoInclude });
+    return tx.resultado.findUniqueOrThrow({ where: { id }, include: resultadoInclude() });
   });
 }
 
@@ -281,6 +282,6 @@ export async function validarResultado(id: number, ctx: AuditContext) {
       ip: ctx.ip,
     });
 
-    return tx.resultado.findUniqueOrThrow({ where: { id }, include: resultadoInclude });
+    return tx.resultado.findUniqueOrThrow({ where: { id }, include: resultadoInclude() });
   });
 }

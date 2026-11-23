@@ -272,7 +272,7 @@ export function MuestraFormModal({
             <div className="space-y-3">
               <div className="flex flex-wrap items-end gap-3">
                 <Campo
-                  etiqueta="Cédula del paciente"
+                  etiqueta="Identificación del paciente"
                   className="min-w-[220px] flex-1"
                 >
                   <Input

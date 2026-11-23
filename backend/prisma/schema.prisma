@@ -40,7 +40,15 @@ model Usuario {
 
 model Paciente {
   id              Int         @id @default(autoincrement()) @db.UnsignedInt
-  cedula          String      @unique(map: "uq_pacientes_cedula") @db.VarChar(20)
+  cedula          String?     @unique(map: "uq_pacientes_cedula") @db.VarChar(20)
+  // dbgenerated: el cliente NO materializa estos defaults en INSERT del modo antiguo.
+  estadoIdentificacion String @default(dbgenerated("'LEGADO_POR_REVISAR'")) @map("estado_identificacion") @db.VarChar(32)
+  tipoDocumento String? @map("tipo_documento") @db.VarChar(3)
+  numeroDocumento String? @map("numero_documento") @db.VarChar(20)
+  paisEmisorDocumento String? @map("pais_emisor_documento") @db.VarChar(2)
+  claveIdentificacion String? @unique(map: "uq_pacientes_clave_identificacion") @map("clave_identificacion") @db.VarChar(64)
+  motivoAusenciaDocumento String? @map("motivo_ausencia_documento") @db.VarChar(255)
+  versionIdentificacion Int @default(dbgenerated("0")) @map("version_identificacion") @db.UnsignedInt
   nombres         String      @db.VarChar(80)
   apellidos       String      @db.VarChar(80)
   fechaNacimiento DateTime    @map("fecha_nacimiento") @db.Date

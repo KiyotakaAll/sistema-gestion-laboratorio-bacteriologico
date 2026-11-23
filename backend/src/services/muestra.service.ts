@@ -1,3 +1,4 @@
+import { seleccionPaciente, seleccionPacienteResumen, filtroDocumento } from './identificacion-paciente';
 import { randomInt } from 'node:crypto';
 import { EstadoMuestra, Prisma } from '@prisma/client';
 import { prisma } from '../config/prisma';
@@ -11,23 +12,23 @@ import type {
 import { obtenerHistorial, registrarLog } from './auditoria.service';
 
 /** Datos livianos para tablas densas (sin antibiograma ni resultados completos). */
-const muestraListaInclude = {
+const muestraListaInclude = () => ({
   solicitud: {
     select: {
       id: true,
       codigo: true,
       prioridad: true,
-      paciente: { select: { id: true, cedula: true, nombres: true, apellidos: true } },
+      paciente: { select: seleccionPacienteResumen() },
     },
   },
   examenes: { select: { id: true, examen: { select: { id: true, codigo: true, nombre: true } } } },
-} satisfies Prisma.MuestraInclude;
+}) satisfies Prisma.MuestraInclude;
 
 /** Solo los roles clínicos autorizados consultan la relación de resultados. */
 function muestraDetalleInclude(rol: RolNombre) {
   const puedeVerResultados = ['BACTERIOLOGO', 'VALIDADOR', 'ADMINISTRADOR'].includes(rol);
   return {
-    solicitud: { include: { paciente: true } },
+    solicitud: { include: { paciente: { select: seleccionPaciente() } } },
     recepcionadoPor: { select: { id: true, username: true, nombreCompleto: true } },
     examenes: {
       include: {
@@ -121,7 +122,7 @@ export async function listarMuestras(filtros: ListarMuestrasQuery) {
   const where: Prisma.MuestraWhereInput = {
     ...(filtros.estado ? { estado: filtros.estado } : {}),
     ...(filtros.codigoBarras ? { codigoBarras: { contains: filtros.codigoBarras.toUpperCase() } } : {}),
-    ...(filtros.cedula ? { solicitud: { paciente: { cedula: { contains: filtros.cedula } } } } : {}),
+    ...(filtros.cedula ? { solicitud: { paciente: filtroDocumento(filtros.cedula) } } : {}),
     ...(filtros.desde || filtros.hasta
       ? {
           fechaToma: {
@@ -135,7 +136,7 @@ export async function listarMuestras(filtros: ListarMuestrasQuery) {
   const [data, total] = await prisma.$transaction([
     prisma.muestra.findMany({
       where,
-      include: muestraListaInclude,
+      include: muestraListaInclude(),
       orderBy: { fechaToma: 'desc' },
       skip: (filtros.page - 1) * filtros.pageSize,
       take: filtros.pageSize,

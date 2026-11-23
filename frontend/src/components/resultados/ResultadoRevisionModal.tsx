@@ -1,10 +1,11 @@
+import { identificacionTexto } from '../../utils/identificacion';
 import { IconoValidacion, IconoCompletado } from '../icons/LabZenIcon';
 import { useState } from 'react';
 import { useToast } from '../../context/ToastContext';
 import { mensajeDeError } from '../../services/api';
 import { resultadosApi } from '../../services/laboratorio';
 import type { ResultadoDetalle } from '../../types/api';
-import { SEXO_ETIQUETA, calcularEdad, formatFechaHora, nombrePaciente } from '../../utils/format';
+import { SEXO_ETIQUETA, edadALaToma, formatFechaHora, nombrePaciente } from '../../utils/format';
 import { Alert } from '../UI/Alert';
 import { EstadoResultadoBadge, PrioridadBadge } from '../UI/Badge';
 import { Button } from '../UI/Button';
@@ -64,8 +65,8 @@ export function ResultadoRevisionModal({ resultado: inicial, usuarioActualId, pu
         <Dato etiqueta="Paciente" className="col-span-2">
           <span className="font-semibold">{nombrePaciente(paciente)}</span>
         </Dato>
-        <Dato etiqueta="Cédula">{paciente.cedula}</Dato>
-        <Dato etiqueta="Edad y sexo">{`${calcularEdad(paciente.fechaNacimiento)} años, ${SEXO_ETIQUETA[paciente.sexo]}`}</Dato>
+        <Dato etiqueta="Identificación">{identificacionTexto(paciente)}</Dato>
+        <Dato etiqueta="Edad a la toma y sexo">{`${edadALaToma(paciente.fechaNacimiento, muestra.fechaToma)}, ${SEXO_ETIQUETA[paciente.sexo]}`}</Dato>
         <Dato etiqueta="Código de barras">
           <span className="font-mono text-xs">{muestra.codigoBarras}</span>
         </Dato>
