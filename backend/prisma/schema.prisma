@@ -71,6 +71,10 @@ model Solicitud {
   pacienteId            Int       @map("paciente_id") @db.UnsignedInt
   usuarioIdRegistra     Int       @map("usuario_id_registra") @db.UnsignedInt
   medicoSolicitante     String?   @map("medico_solicitante") @db.VarChar(120)
+  // Texto anterior inmutable; la nueva instantánea cambia solo al elegir otro remitente.
+  medicoRemitenteId     Int?      @map("medico_remitente_id") @db.UnsignedInt
+  medicoRemitenteNombre String?   @map("medico_remitente_nombre") @db.VarChar(120)
+  medicoRemitente       MedicoRemitente? @relation(fields: [medicoRemitenteId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_solicitudes_medico_remitente")
   diagnosticoPresuntivo String?   @map("diagnostico_presuntivo") @db.VarChar(255)
   prioridad             Prioridad @default(RUTINA)
   fechaSolicitud        DateTime  @default(now()) @map("fecha_solicitud")
@@ -84,7 +88,28 @@ model Solicitud {
   @@index([pacienteId], map: "idx_solicitudes_paciente")
   @@index([fechaSolicitud], map: "idx_solicitudes_fecha")
   @@index([usuarioIdRegistra], map: "idx_solicitudes_registra")
+  @@index([medicoRemitenteId], map: "idx_solicitudes_medico_remitente")
   @@map("solicitudes")
+}
+
+model MedicoRemitente {
+  id                  Int      @id @default(autoincrement()) @db.UnsignedInt
+  nombres             String   @db.VarChar(80)
+  apellidos           String   @db.VarChar(80)
+  registroProfesional String?  @unique(map: "uq_medicos_registro") @map("registro_profesional") @db.VarChar(50)
+  especialidad        String?  @db.VarChar(100)
+  telefono            String?  @db.VarChar(25)
+  email               String?  @db.VarChar(120)
+  institucion         String?  @db.VarChar(120)
+  // Huella de ficha completa con contacto: nunca se calcula solo por nombre.
+  claveDuplicado      String?  @unique(map: "uq_medicos_duplicado") @map("clave_duplicado") @db.VarChar(64)
+  activo              Boolean  @default(true)
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @default(now()) @updatedAt @map("updated_at")
+  solicitudes         Solicitud[]
+
+  @@index([apellidos, nombres], map: "idx_medicos_nombre")
+  @@map("medicos_remitentes")
 }
 
 model Examen {

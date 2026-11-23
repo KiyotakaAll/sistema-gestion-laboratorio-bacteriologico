@@ -11,6 +11,7 @@ import ValidacionAthenea from './pages/ValidacionAthenea';
 import WorklistResultados from './pages/WorklistResultados';
 import Configuracion from './pages/Configuracion';
 import GestionUsuarios from './pages/GestionUsuarios';
+import MedicosRemitentes from './pages/MedicosRemitentes';
 
 /** Exige sesión; si no la hay, envía al login recordando a dónde quería ir. */
 function RutaProtegida() {
@@ -51,6 +52,7 @@ export default function App() {
           <Route path="/worklist" element={<ConRol roles={rolesDeRuta('/worklist')}><WorklistResultados /></ConRol>} />
           <Route path="/validacion" element={<ConRol roles={rolesDeRuta('/validacion')}><ValidacionAthenea /></ConRol>} />
           <Route path="/usuarios" element={<ConRol roles={rolesDeRuta('/usuarios')}><GestionUsuarios /></ConRol>} />
+          <Route path="/medicos" element={<ConRol roles={rolesDeRuta('/medicos')}><MedicosRemitentes /></ConRol>} />
         </Route>
       </Route>
       <Route path="*" element={<Navigate to="/dashboard" replace />} />

@@ -1,3 +1,6 @@
+import { medicosApi } from '../../services/medicos';
+import { MedicoSelector } from '../medicos/MedicoSelector';
+import { RemitenteSolicitudModal } from '../medicos/RemitenteSolicitudModal';
 import { IconoEditar, IconoSolicitudes, IconoMuestras } from '../icons/LabZenIcon';
 import { useMemo, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -33,6 +36,9 @@ export function PacienteDetalleModal({ pacienteId, puedeEscribir, onCerrar, onCa
   const navigate = useNavigate();
   const toast = useToast();
   const { datos: paciente, cargando, error, recargar } = useCarga(() => pacientesApi.obtener(pacienteId), [pacienteId]);
+  const capacidadMedicos = useCarga(() => medicosApi.capacidades(), []);
+  const directorioMedicos = capacidadMedicos.datos?.directorioMedicos === true;
+  const [remitenteSolicitud, setRemitenteSolicitud] = useState<number | null>(null);
   const [editando, setEditando] = useState(false);
   const [identificando, setIdentificando] = useState(false);
   const [nuevaSolicitud, setNuevaSolicitud] = useState(false);
@@ -43,7 +49,7 @@ export function PacienteDetalleModal({ pacienteId, puedeEscribir, onCerrar, onCa
       { id: 'codigo', header: 'Solicitud', accessor: (s) => s.codigo, cell: (s) => <span className="font-mono text-xs">{s.codigo}</span> },
       { id: 'fecha', header: 'Fecha', accessor: (s) => s.fechaSolicitud, cell: (s) => formatFechaHora(s.fechaSolicitud) },
       { id: 'prioridad', header: 'Prioridad', accessor: (s) => s.prioridad, cell: (s) => <PrioridadBadge prioridad={s.prioridad} /> },
-      { id: 'medico', header: 'Médico solicitante', accessor: (s) => s.medicoSolicitante },
+      { id: 'medico', header: 'Médico solicitante', accessor: (s) => s.medicoRemitenteNombre ?? s.medicoSolicitante },
       { id: 'diagnostico', header: 'Diagnóstico presuntivo', accessor: (s) => s.diagnosticoPresuntivo },
       { id: 'muestras', header: 'Muestras', accessor: (s) => s._count.muestras, align: 'right' },
       {
@@ -54,13 +60,14 @@ export function PacienteDetalleModal({ pacienteId, puedeEscribir, onCerrar, onCa
         align: 'right',
         cell: (s) =>
           puedeEscribir ? (
+            <div className="flex flex-wrap gap-2">{directorioMedicos && <Button tamano="sm" onClick={() => setRemitenteSolicitud(s.id)} aria-label={`Editar remitente de ${s.codigo}`}>Remitente</Button>}
             <Button tamano="sm" variante="fantasma" icono={<IconoMuestras className="h-3.5 w-3.5" aria-hidden />} onClick={() => navigate(`/recepcion?solicitudId=${s.id}`)}>
               Registrar muestra
-            </Button>
+            </Button></div>
           ) : null,
       },
     ],
-    [puedeEscribir, navigate],
+    [puedeEscribir, navigate, directorioMedicos],
   );
 
   return (
@@ -113,6 +120,7 @@ export function PacienteDetalleModal({ pacienteId, puedeEscribir, onCerrar, onCa
               {nuevaSolicitud && (
                 <NuevaSolicitudForm
                   pacienteId={paciente.id}
+                  directorioMedicos={directorioMedicos}
                   guardando={guardandoSolicitud}
                   setGuardando={setGuardandoSolicitud}
                   onCancelar={() => setNuevaSolicitud(false)}
@@ -137,6 +145,8 @@ export function PacienteDetalleModal({ pacienteId, puedeEscribir, onCerrar, onCa
         )}
       </Modal>
 
+      {remitenteSolicitud !== null && <RemitenteSolicitudModal solicitudId={remitenteSolicitud}
+        onCerrar={() => setRemitenteSolicitud(null)} onGuardado={() => { setRemitenteSolicitud(null); recargar(); onCambio(); }} />}
       {editando && paciente && (
         <PacienteFormModal
           paciente={paciente}
@@ -154,8 +164,9 @@ export function PacienteDetalleModal({ pacienteId, puedeEscribir, onCerrar, onCa
   );
 }
 
-function NuevaSolicitudForm({ pacienteId, onCancelar, onCreada, guardando, setGuardando }: {
+function NuevaSolicitudForm({ directorioMedicos, pacienteId, onCancelar, onCreada, guardando, setGuardando }: {
   pacienteId: number;
+  directorioMedicos: boolean;
   onCancelar: () => void;
   onCreada: (codigo: string) => void;
   guardando: boolean;
@@ -163,6 +174,7 @@ function NuevaSolicitudForm({ pacienteId, onCancelar, onCreada, guardando, setGu
 }) {
   const [prioridad, setPrioridad] = useState<Prioridad>('RUTINA');
   const [medico, setMedico] = useState('');
+  const [medicoId, setMedicoId] = useState<number | null>(null);
   const [diagnostico, setDiagnostico] = useState('');
   const [observaciones, setObservaciones] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -177,7 +189,7 @@ function NuevaSolicitudForm({ pacienteId, onCancelar, onCreada, guardando, setGu
       const solicitud = await solicitudesApi.crear({
         pacienteId,
         prioridad,
-        medicoSolicitante: opcional(medico),
+        ...(directorioMedicos && medicoId !== null ? { medicoRemitenteId: medicoId } : { medicoSolicitante: opcional(medico) }),
         diagnosticoPresuntivo: opcional(diagnostico),
         observaciones: opcional(observaciones),
       });
@@ -204,8 +216,9 @@ function NuevaSolicitudForm({ pacienteId, onCancelar, onCreada, guardando, setGu
         </Select>
       </Campo>
       <Campo etiqueta="Médico solicitante">
-        <Input value={medico} onChange={(e) => setMedico(e.target.value)} />
+        <Input maxLength={120} disabled={guardando || (directorioMedicos && medicoId !== null)} value={medico} onChange={(e) => setMedico(e.target.value)} />
       </Campo>
+      {directorioMedicos && <div className="md:col-span-2"><MedicoSelector value={medicoId} onChange={setMedicoId} disabled={guardando} /></div>}
       <Campo etiqueta="Diagnóstico presuntivo">
         <Input value={diagnostico} onChange={(e) => setDiagnostico(e.target.value)} />
       </Campo>

@@ -10,6 +10,8 @@ import { ToastProvider } from '../context/ToastContext';
 import { authApi, pacientesApi, solicitudesApi } from '../services/laboratorio';
 import type { Paciente, PacienteDetalle, Paginado, SolicitudDetalle } from '../types/api';
 
+vi.mock('../services/medicos', () => ({ medicosApi: { capacidades: vi.fn(async () => ({ directorioMedicos: false })) } }));
+
 vi.mock('../services/laboratorio', () => ({
   authApi: { perfil: vi.fn() },
   pacientesApi: { capacidades: vi.fn(async () => ({ identificacionPacientes: false })), listar: vi.fn(), obtener: vi.fn(), crear: vi.fn(), actualizar: vi.fn() },

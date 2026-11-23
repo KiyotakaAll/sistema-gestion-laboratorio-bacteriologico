@@ -19,6 +19,7 @@ const envSchema = z.object({
   BCRYPT_ROUNDS: z.coerce.number().int().min(10).max(15).default(12),
   CORS_ORIGIN: z.string().default('http://localhost:5173'),
   PACIENTES_IDENTIFICACION_HABILITADA: z.enum(['true', 'false']).default('false').transform(v => v === 'true'),
+  MEDICOS_REMITENTES_HABILITADOS: z.enum(['true', 'false']).default('false').transform(v => v === 'true'),
 });
 
 export type Env = z.infer<typeof envSchema>;

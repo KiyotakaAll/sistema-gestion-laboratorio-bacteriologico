@@ -271,7 +271,11 @@ test('detalle: usa ID y solicita las últimas veinte solicitudes, no todo el his
   assert.equal(r.body.data.solicitudes[0].pacienteId, 73);
   assert.deepEqual(llamadas('paciente.findUnique')[0].args, {
     where: { id: 73 }, select: { ...selectAntiguo, solicitudes: {
-      orderBy: { fechaSolicitud: 'desc' }, take: 20, include: { _count: { select: { muestras: true } } },
+      orderBy: { fechaSolicitud: 'desc' }, take: 20, select: {
+        id: true, codigo: true, pacienteId: true, usuarioIdRegistra: true, medicoSolicitante: true,
+        diagnosticoPresuntivo: true, prioridad: true, fechaSolicitud: true, observaciones: true, createdAt: true, updatedAt: true,
+        _count: { select: { muestras: true } },
+      },
     } },
   });
 });
@@ -322,7 +326,7 @@ test('solicitudes: filtro documental parcial coexiste con pacienteId y prioridad
   assert.deepEqual(consulta.where, { pacienteId: 73, prioridad: 'URGENTE', paciente: { cedula: { contains: '00Ab' } } });
   assert.equal(consulta.skip, 20);
   assert.equal(consulta.take, 20);
-  assert.deepEqual(consulta.include.paciente.select, { id: true, cedula: true, nombres: true, apellidos: true });
+  assert.deepEqual(consulta.select.paciente.select, { id: true, cedula: true, nombres: true, apellidos: true });
   assert.equal(r.page, 2);
 });
 

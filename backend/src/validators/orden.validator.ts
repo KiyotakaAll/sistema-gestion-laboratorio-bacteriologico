@@ -4,9 +4,12 @@ import { paginacionSchema, textoOpcional } from './common.validator';
 export const crearSolicitudSchema = z.object({
   pacienteId: z.number().int().positive(),
   medicoSolicitante: textoOpcional(120),
+  medicoRemitenteId: z.number().int().positive().max(4294967295).nullable().optional(),
   diagnosticoPresuntivo: textoOpcional(255),
   prioridad: z.enum(['RUTINA', 'URGENTE']).default('RUTINA'),
   observaciones: textoOpcional(255),
+}).refine(v => v.medicoRemitenteId == null || v.medicoSolicitante === undefined, {
+  message: 'Seleccione un médico por ID o escriba un remitente, no ambos', path: ['medicoRemitenteId'],
 });
 
 export const listarSolicitudesQuerySchema = paginacionSchema.extend({

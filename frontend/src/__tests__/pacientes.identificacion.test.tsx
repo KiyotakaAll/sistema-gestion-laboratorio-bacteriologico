@@ -12,6 +12,8 @@ import { AuthProvider } from '../context/AuthContext';
 import type { Paciente, TipoDocumento } from '../types/api';
 import { CATALOGO_DOCUMENTOS, identificacionTexto } from '../utils/identificacion';
 
+vi.mock('../services/medicos', () => ({ medicosApi: { capacidades: vi.fn(async () => ({ directorioMedicos: false })) } }));
+
 vi.mock('../services/laboratorio', () => ({
   pacientesApi: { crear: vi.fn(), identificar: vi.fn(), obtener: vi.fn(), capacidades: vi.fn(), listar: vi.fn() },
   authApi: { perfil: vi.fn() },

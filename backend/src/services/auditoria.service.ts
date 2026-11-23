@@ -4,7 +4,7 @@ import type { EventoTrazabilidad, TxClient } from '../types/dto';
 
 export interface RegistroLog {
   usuarioId: number | null;
-  entidad: 'MUESTRA' | 'RESULTADO' | 'USUARIO' | 'PACIENTE' | 'SOLICITUD';
+  entidad: 'MUESTRA' | 'RESULTADO' | 'USUARIO' | 'PACIENTE' | 'SOLICITUD' | 'MEDICO';
   entidadId: number;
   accion: string;
   estadoAnterior?: string | null;

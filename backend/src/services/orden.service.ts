@@ -1,3 +1,5 @@
+import { exigirDirectorioMedicos, seleccionSolicitudBase } from './medicos-disponibilidad';
+import { medicoActivoParaSolicitud } from './medico.service';
 import { seleccionPaciente, seleccionPacienteResumen, filtroDocumento } from './identificacion-paciente';
 import { Prisma } from '@prisma/client';
 import { prisma } from '../config/prisma';
@@ -11,14 +13,15 @@ import { registrarLog } from './auditoria.service';
 
 const MAX_REINTENTOS_CODIGO = 3;
 
-const solicitudInclude = () => ({
+const solicitudSelect = async () => ({
+  ...await seleccionSolicitudBase(),
   paciente: { select: seleccionPaciente() },
   registradoPor: { select: { id: true, username: true, nombreCompleto: true } },
   muestras: {
     include: { examenes: { include: { examen: { select: { id: true, codigo: true, nombre: true } } } } },
     orderBy: { fechaToma: 'asc' },
   },
-}) satisfies Prisma.SolicitudInclude;
+}) satisfies Prisma.SolicitudSelect;
 
 /** Calcula el siguiente código SOL-AAAA-NNNNNN del año en curso. */
 async function siguienteCodigo(tx: Prisma.TransactionClient): Promise<string> {
@@ -47,6 +50,8 @@ function esColisionDeCodigo(error: unknown): boolean {
  * aquí se reintenta la transacción completa con un número nuevo.
  */
 export async function crearSolicitud(input: CrearSolicitudInput, ctx: AuditContext) {
+  if (input.medicoRemitenteId !== undefined) await exigirDirectorioMedicos();
+  const select = await solicitudSelect();
   for (let intento = 1; intento <= MAX_REINTENTOS_CODIGO; intento += 1) {
     try {
       return await prisma.$transaction(async (tx) => {
@@ -58,17 +63,20 @@ export async function crearSolicitud(input: CrearSolicitudInput, ctx: AuditConte
           throw new AppError(404, 'El paciente no existe.', 'PACIENTE_NO_ENCONTRADO');
         }
 
+        const remitente: { medicoRemitenteId?: number; medicoRemitenteNombre?: string } = input.medicoRemitenteId != null
+          ? await medicoActivoParaSolicitud(tx, input.medicoRemitenteId) : {};
         const solicitud = await tx.solicitud.create({
           data: {
             codigo: await siguienteCodigo(tx),
             pacienteId: input.pacienteId,
             usuarioIdRegistra: ctx.usuarioId,
-            medicoSolicitante: input.medicoSolicitante,
+            medicoSolicitante: remitente.medicoRemitenteNombre ?? input.medicoSolicitante,
+            ...remitente,
             diagnosticoPresuntivo: input.diagnosticoPresuntivo,
             prioridad: input.prioridad,
             observaciones: input.observaciones,
           },
-          include: solicitudInclude(),
+          select,
         });
 
         await registrarLog(tx, {
@@ -76,7 +84,10 @@ export async function crearSolicitud(input: CrearSolicitudInput, ctx: AuditConte
           entidad: 'SOLICITUD',
           entidadId: solicitud.id,
           accion: 'CREAR',
-          detalle: { codigo: solicitud.codigo, pacienteId: input.pacienteId },
+          detalle: { codigo: solicitud.codigo, pacienteId: input.pacienteId,
+            ...(input.medicoRemitenteId != null ? { medicoRemitenteId: input.medicoRemitenteId,
+              medicoRemitenteNombre: remitente.medicoRemitenteNombre ?? null } : {}),
+          },
           ip: ctx.ip,
         });
 
@@ -111,7 +122,8 @@ export async function listarSolicitudes(filtros: ListarSolicitudesQuery) {
   const [data, total] = await prisma.$transaction([
     prisma.solicitud.findMany({
       where,
-      include: {
+      select: {
+        ...await seleccionSolicitudBase(),
         paciente: { select: seleccionPacienteResumen() },
         _count: { select: { muestras: true } },
       },
@@ -133,7 +145,7 @@ export async function listarSolicitudes(filtros: ListarSolicitudesQuery) {
 }
 
 export async function obtenerSolicitudPorId(id: number) {
-  const solicitud = await prisma.solicitud.findUnique({ where: { id }, include: solicitudInclude() });
+  const solicitud = await prisma.solicitud.findUnique({ where: { id }, select: await solicitudSelect() });
   if (!solicitud) {
     throw new AppError(404, 'La solicitud no existe.', 'SOLICITUD_NO_ENCONTRADA');
   }
@@ -145,5 +157,28 @@ export async function listarExamenes() {
   return prisma.examen.findMany({
     where: { activo: true },
     orderBy: { nombre: 'asc' },
+  });
+}
+
+/** Cambia únicamente el vínculo y su instantánea; nunca reescribe medicoSolicitante histórico. */
+export async function actualizarRemitente(id: number, medicoRemitenteId: number | null, ctx: AuditContext) {
+  await exigirDirectorioMedicos();
+  const select = await solicitudSelect();
+  return prisma.$transaction(async tx => {
+    // Serializa modificaciones simultáneas de esta solicitud.
+    await tx.$queryRaw`SELECT id FROM solicitudes WHERE id = ${id} FOR UPDATE`;
+    const anterior = await tx.solicitud.findUnique({ where: { id }, select });
+    if (!anterior) throw new AppError(404, 'La solicitud no existe.', 'SOLICITUD_NO_ENCONTRADA');
+    if (anterior.medicoRemitenteId === medicoRemitenteId) return anterior;
+    const data = medicoRemitenteId === null
+      ? { medicoRemitenteId: null, medicoRemitenteNombre: null }
+      : await medicoActivoParaSolicitud(tx, medicoRemitenteId);
+    const solicitud = await tx.solicitud.update({ where: { id }, data, select });
+    await registrarLog(tx, { usuarioId: ctx.usuarioId, entidad: 'SOLICITUD', entidadId: id,
+      accion: 'CAMBIAR_REMITENTE', detalle: {
+        medicoAnteriorId: anterior.medicoRemitenteId ?? null,
+        nombreAnterior: anterior.medicoRemitenteNombre ?? null, ...data,
+      }, ip: ctx.ip });
+    return solicitud;
   });
 }

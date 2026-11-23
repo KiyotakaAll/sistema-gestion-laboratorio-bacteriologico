@@ -1,3 +1,4 @@
+import { seleccionSolicitudBase } from './medicos-disponibilidad';
 import type { Prisma } from '@prisma/client';
 import { prisma } from '../config/prisma';
 import type { AuditContext, Paginado } from '../types/dto';
@@ -134,7 +135,7 @@ export async function obtenerPacientePorId(id: number) {
       solicitudes: {
         orderBy: { fechaSolicitud: 'desc' },
         take: 20,
-        include: { _count: { select: { muestras: true } } },
+        select: { ...await seleccionSolicitudBase(), _count: { select: { muestras: true } } },
       },
     },
   });

@@ -1,9 +1,10 @@
+import { seleccionSolicitudBase } from './medicos-disponibilidad';
 import { seleccionPaciente, seleccionPacienteResumen, filtroDocumento } from './identificacion-paciente';
 import { randomInt } from 'node:crypto';
 import { EstadoMuestra, Prisma } from '@prisma/client';
 import { prisma } from '../config/prisma';
 import type { RolNombre } from '../types/auth';
-import type { AuditContext, EventoTrazabilidad, Paginado } from '../types/dto';
+import type { AuditContext, EventoTrazabilidad, Paginado, TxClient } from '../types/dto';
 import { AppError } from '../types/errors';
 import type {
   ListarMuestrasQuery,
@@ -25,10 +26,10 @@ const muestraListaInclude = () => ({
 }) satisfies Prisma.MuestraInclude;
 
 /** Solo los roles clínicos autorizados consultan la relación de resultados. */
-function muestraDetalleInclude(rol: RolNombre) {
+async function muestraDetalleInclude(rol: RolNombre, cliente: TxClient = prisma) {
   const puedeVerResultados = ['BACTERIOLOGO', 'VALIDADOR', 'ADMINISTRADOR'].includes(rol);
   return {
-    solicitud: { include: { paciente: { select: seleccionPaciente() } } },
+    solicitud: { select: { ...await seleccionSolicitudBase(cliente), paciente: { select: seleccionPaciente() } } },
     recepcionadoPor: { select: { id: true, username: true, nombreCompleto: true } },
     examenes: {
       include: {
@@ -101,7 +102,7 @@ export async function registrarMuestra(input: RegistrarMuestraInput, ctx: AuditC
         fechaToma: input.fechaToma,
         examenes: { create: input.examenIds.map((examenId) => ({ examenId })) },
       },
-      include: muestraDetalleInclude(rol),
+      include: await muestraDetalleInclude(rol, tx),
     });
 
     await registrarLog(tx, {
@@ -155,7 +156,7 @@ export async function listarMuestras(filtros: ListarMuestrasQuery) {
 }
 
 export async function obtenerMuestraPorId(id: number, rol: RolNombre) {
-  const muestra = await prisma.muestra.findUnique({ where: { id }, include: muestraDetalleInclude(rol) });
+  const muestra = await prisma.muestra.findUnique({ where: { id }, include: await muestraDetalleInclude(rol) });
   if (!muestra) {
     throw new AppError(404, 'La muestra no existe.', 'MUESTRA_NO_ENCONTRADA');
   }
@@ -166,7 +167,7 @@ export async function obtenerMuestraPorId(id: number, rol: RolNombre) {
 export async function obtenerMuestraPorCodigoBarras(codigoBarras: string, rol: RolNombre) {
   const muestra = await prisma.muestra.findUnique({
     where: { codigoBarras },
-    include: muestraDetalleInclude(rol),
+    include: await muestraDetalleInclude(rol),
   });
   if (!muestra) {
     throw new AppError(404, 'No existe una muestra con ese código de barras.', 'MUESTRA_NO_ENCONTRADA');
@@ -242,7 +243,7 @@ async function transicionar({ id, desde, hasta, accion, ctx, rol, datos, detalle
       ip: ctx.ip,
     });
 
-    return tx.muestra.findUniqueOrThrow({ where: { id }, include: muestraDetalleInclude(rol) });
+    return tx.muestra.findUniqueOrThrow({ where: { id }, include: await muestraDetalleInclude(rol, tx) });
   });
 }
 

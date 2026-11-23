@@ -1,7 +1,8 @@
+import { seleccionSolicitudBase } from './medicos-disponibilidad';
 import { seleccionPaciente } from './identificacion-paciente';
 import { EstadoMuestra, EstadoResultado, Prisma } from '@prisma/client';
 import { prisma } from '../config/prisma';
-import type { AuditContext, Paginado } from '../types/dto';
+import type { AuditContext, Paginado, TxClient } from '../types/dto';
 import { AppError } from '../types/errors';
 import type {
   ActualizarResultadoInput,
@@ -13,14 +14,14 @@ import { registrarLog } from './auditoria.service';
 
 const usuarioResumen = { select: { id: true, username: true, nombreCompleto: true } } as const;
 
-const resultadoInclude = () => ({
+const resultadoInclude = async (cliente: TxClient = prisma) => ({
   antibiograma: { orderBy: { antibiotico: 'asc' } },
   registradoPor: usuarioResumen,
   validadoPor: usuarioResumen,
   muestraExamen: {
     include: {
       examen: true,
-      muestra: { include: { solicitud: { include: { paciente: { select: seleccionPaciente() } } } } },
+      muestra: { include: { solicitud: { select: { ...await seleccionSolicitudBase(cliente), paciente: { select: seleccionPaciente() } } } } },
     },
   },
 }) satisfies Prisma.ResultadoInclude;
@@ -38,7 +39,7 @@ export async function obtenerWorklist({ soloPendientes }: WorklistQuery) {
     },
     include: {
       examen: true,
-      muestra: { include: { solicitud: { include: { paciente: { select: seleccionPaciente() } } } } },
+      muestra: { include: { solicitud: { select: { ...await seleccionSolicitudBase(), paciente: { select: seleccionPaciente() } } } } },
       resultado: { include: { antibiograma: { orderBy: { antibiotico: 'asc' } } } },
     },
     orderBy: [
@@ -64,7 +65,7 @@ export async function listarResultados(filtros: ListarResultadosQuery) {
   const [data, total] = await prisma.$transaction([
     prisma.resultado.findMany({
       where,
-      include: resultadoInclude(),
+      include: await resultadoInclude(),
       orderBy: { fechaRegistro: 'desc' },
       skip: (filtros.page - 1) * filtros.pageSize,
       take: filtros.pageSize,
@@ -83,7 +84,7 @@ export async function listarResultados(filtros: ListarResultadosQuery) {
 }
 
 export async function obtenerResultadoPorId(id: number) {
-  const resultado = await prisma.resultado.findUnique({ where: { id }, include: resultadoInclude() });
+  const resultado = await prisma.resultado.findUnique({ where: { id }, include: await resultadoInclude() });
   if (!resultado) {
     throw new AppError(404, 'El resultado no existe.', 'RESULTADO_NO_ENCONTRADO');
   }
@@ -167,7 +168,7 @@ export async function registrarResultado(input: RegistrarResultadoInput, ctx: Au
       }
     }
 
-    return tx.resultado.findUniqueOrThrow({ where: { id: resultado.id }, include: resultadoInclude() });
+    return tx.resultado.findUniqueOrThrow({ where: { id: resultado.id }, include: await resultadoInclude(tx) });
   });
 }
 
@@ -216,7 +217,7 @@ export async function actualizarResultado(id: number, input: ActualizarResultado
       ip: ctx.ip,
     });
 
-    return tx.resultado.findUniqueOrThrow({ where: { id }, include: resultadoInclude() });
+    return tx.resultado.findUniqueOrThrow({ where: { id }, include: await resultadoInclude(tx) });
   });
 }
 
@@ -282,6 +283,6 @@ export async function validarResultado(id: number, ctx: AuditContext) {
       ip: ctx.ip,
     });
 
-    return tx.resultado.findUniqueOrThrow({ where: { id }, include: resultadoInclude() });
+    return tx.resultado.findUniqueOrThrow({ where: { id }, include: await resultadoInclude(tx) });
   });
 }

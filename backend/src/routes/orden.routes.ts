@@ -22,5 +22,7 @@ router.post(
   requireRoles('RECEPCIONISTA', 'ADMINISTRADOR'),
   ordenController.crear,
 );
+router.patch('/solicitudes/:id/remitente', authenticate,
+  requireRoles('RECEPCIONISTA', 'ADMINISTRADOR'), ordenController.actualizarRemitente);
 
 export default router;

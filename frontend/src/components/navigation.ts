@@ -37,6 +37,13 @@ export const NAVEGACION: ItemNavegacion[] = [
     roles: ['ADMINISTRADOR', 'RECEPCIONISTA'],
   },
   {
+    ruta: '/medicos',
+    etiqueta: 'Médicos remitentes',
+    titulo: 'Directorio de médicos remitentes',
+    icono: IconoUsuarios,
+    roles: TODOS,
+  },
+  {
     ruta: '/recepcion',
     etiqueta: 'Recepción de muestras',
     titulo: 'Control y trazabilidad de muestras',

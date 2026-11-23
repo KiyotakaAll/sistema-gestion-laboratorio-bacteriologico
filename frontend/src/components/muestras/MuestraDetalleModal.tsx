@@ -147,7 +147,7 @@ export function MuestraDetalleModal({ muestraId, onCerrar, onCambio }: Props) {
             <Dato etiqueta="Prioridad">
               <PrioridadBadge prioridad={m.solicitud.prioridad} />
             </Dato>
-            <Dato etiqueta="Médico solicitante">{m.solicitud.medicoSolicitante}</Dato>
+            <Dato etiqueta="Médico solicitante">{m.solicitud.medicoRemitenteNombre ?? m.solicitud.medicoSolicitante}</Dato>
             <Dato etiqueta="Diagnóstico presuntivo">{m.solicitud.diagnosticoPresuntivo}</Dato>
             <Dato etiqueta="Tipo de muestra">{m.tipoMuestra}</Dato>
             <Dato etiqueta="Sitio anatómico">{m.sitioAnatomico}</Dato>

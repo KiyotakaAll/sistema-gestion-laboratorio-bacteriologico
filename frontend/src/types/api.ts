@@ -85,6 +85,8 @@ export interface SolicitudBase {
   pacienteId: number;
   usuarioIdRegistra: number;
   medicoSolicitante: string | null;
+  medicoRemitenteId?: number | null;
+  medicoRemitenteNombre?: string | null;
   diagnosticoPresuntivo: string | null;
   prioridad: Prioridad;
   fechaSolicitud: string;
@@ -239,6 +241,7 @@ export interface NuevaSolicitud {
   pacienteId: number;
   prioridad: Prioridad;
   medicoSolicitante?: string;
+  medicoRemitenteId?: number | null;
   diagnosticoPresuntivo?: string;
   observaciones?: string;
 }
