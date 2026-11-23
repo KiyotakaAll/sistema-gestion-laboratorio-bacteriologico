@@ -1,12 +1,20 @@
+import { medicosApi } from '../../services/medicos';
+import { MedicoSelector } from '../medicos/MedicoSelector';
+import { RemitenteSolicitudModal } from '../medicos/RemitenteSolicitudModal';
 import { IconoEditar, IconoSolicitudes, IconoMuestras } from '../icons/LabZenIcon';
 import { useMemo, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '../../context/ToastContext';
 import { useCarga } from '../../hooks/useCarga';
 import { detallesDeError, mensajeDeError, type DetalleCampo } from '../../services/api';
-import { pacientesApi, solicitudesApi } from '../../services/laboratorio';
+import { pacientesApi, solicitudesApi, examenesApi } from '../../services/laboratorio';
+import { catalogosApi, type ExamenSolicitadoEntrada } from '../../services/catalogos';
+import { ExamenesOrdenSelector } from './ExamenesOrdenSelector';
+import { DocumentoAcciones } from '../documentos/DocumentoAcciones';
 import type { PacienteDetalle, Prioridad } from '../../types/api';
-import { SEXO_ETIQUETA, calcularEdad, formatFechaDia, formatFechaHora, nombrePaciente, opcional } from '../../utils/format';
+import { SEXO_ETIQUETA, formatEdad, formatFechaDia, formatFechaHora, nombrePaciente, opcional } from '../../utils/format';
+import { identificacionTexto } from '../../utils/identificacion';
+import { IdentificacionModal } from './IdentificacionModal';
 import { PrioridadBadge } from '../UI/Badge';
 import { Alert } from '../UI/Alert';
 import { Button } from '../UI/Button';
@@ -21,17 +29,24 @@ type SolicitudFila = PacienteDetalle['solicitudes'][number];
 interface Props {
   pacienteId: number;
   puedeEscribir: boolean;
+  puedeSolicitudes?: boolean;
+  puedeRegistrarMuestras?: boolean;
   onCerrar: () => void;
   /** Se invoca cuando cambian datos que afectan al listado de fondo. */
   onCambio: () => void;
 }
 
 /** Modal Master-Detail: datos del paciente (maestro) y sus solicitudes (detalle). */
-export function PacienteDetalleModal({ pacienteId, puedeEscribir, onCerrar, onCambio }: Props) {
+export function PacienteDetalleModal({ pacienteId, puedeEscribir, puedeSolicitudes = puedeEscribir,
+  puedeRegistrarMuestras = puedeEscribir, onCerrar, onCambio }: Props) {
   const navigate = useNavigate();
   const toast = useToast();
   const { datos: paciente, cargando, error, recargar } = useCarga(() => pacientesApi.obtener(pacienteId), [pacienteId]);
+  const capacidadMedicos = useCarga(() => medicosApi.capacidades(), []);
+  const directorioMedicos = capacidadMedicos.datos?.directorioMedicos === true;
+  const [remitenteSolicitud, setRemitenteSolicitud] = useState<number | null>(null);
   const [editando, setEditando] = useState(false);
+  const [identificando, setIdentificando] = useState(false);
   const [nuevaSolicitud, setNuevaSolicitud] = useState(false);
   const [guardandoSolicitud, setGuardandoSolicitud] = useState(false);
 
@@ -40,7 +55,7 @@ export function PacienteDetalleModal({ pacienteId, puedeEscribir, onCerrar, onCa
       { id: 'codigo', header: 'Solicitud', accessor: (s) => s.codigo, cell: (s) => <span className="font-mono text-xs">{s.codigo}</span> },
       { id: 'fecha', header: 'Fecha', accessor: (s) => s.fechaSolicitud, cell: (s) => formatFechaHora(s.fechaSolicitud) },
       { id: 'prioridad', header: 'Prioridad', accessor: (s) => s.prioridad, cell: (s) => <PrioridadBadge prioridad={s.prioridad} /> },
-      { id: 'medico', header: 'Médico solicitante', accessor: (s) => s.medicoSolicitante },
+      { id: 'medico', header: 'Médico solicitante', accessor: (s) => s.medicoRemitenteNombre ?? s.medicoSolicitante },
       { id: 'diagnostico', header: 'Diagnóstico presuntivo', accessor: (s) => s.diagnosticoPresuntivo },
       { id: 'muestras', header: 'Muestras', accessor: (s) => s._count.muestras, align: 'right' },
       {
@@ -50,14 +65,17 @@ export function PacienteDetalleModal({ pacienteId, puedeEscribir, onCerrar, onCa
         accessor: () => null,
         align: 'right',
         cell: (s) =>
-          puedeEscribir ? (
-            <Button tamano="sm" variante="fantasma" icono={<IconoMuestras className="h-3.5 w-3.5" aria-hidden />} onClick={() => navigate(`/recepcion?solicitudId=${s.id}`)}>
+          (
+            <div className="flex flex-wrap gap-2"><DocumentoAcciones clase="orden" solicitudId={s.id} />
+            <DocumentoAcciones clase="informe" solicitudId={s.id} disabled={s._count.muestras === 0} />
+            {puedeSolicitudes && directorioMedicos && <Button tamano="sm" onClick={() => setRemitenteSolicitud(s.id)} aria-label={`Editar remitente de ${s.codigo}`}>Remitente</Button>}
+            {puedeRegistrarMuestras && <Button tamano="sm" variante="fantasma" icono={<IconoMuestras className="h-3.5 w-3.5" aria-hidden />} onClick={() => navigate(`/recepcion?solicitudId=${s.id}`)}>
               Registrar muestra
-            </Button>
-          ) : null,
+            </Button>}</div>
+          ),
       },
     ],
-    [puedeEscribir, navigate],
+    [puedeSolicitudes, puedeRegistrarMuestras, navigate, directorioMedicos],
   );
 
   return (
@@ -66,7 +84,7 @@ export function PacienteDetalleModal({ pacienteId, puedeEscribir, onCerrar, onCa
         abierto
         ancho="xl"
         titulo={paciente ? nombrePaciente(paciente) : 'Paciente'}
-        subtitulo={paciente ? `Cédula ${paciente.cedula}` : undefined}
+        subtitulo={paciente ? (paciente.identificacion ? identificacionTexto(paciente) : paciente.cedula ? `Cédula ${paciente.cedula}` : 'Identificación no disponible') : undefined}
         onCerrar={() => { if (!guardandoSolicitud) onCerrar(); }}
         pie={<Button onClick={onCerrar} disabled={guardandoSolicitud}>Cerrar</Button>}
       >
@@ -76,7 +94,9 @@ export function PacienteDetalleModal({ pacienteId, puedeEscribir, onCerrar, onCa
           <>
             <div className="flex items-start justify-between gap-5 rounded-xl border border-line bg-subtle p-5">
                 <Datos columnas={4}>
-                <Dato etiqueta="Edad">{`${calcularEdad(paciente.fechaNacimiento)} años`}</Dato>
+                <Dato etiqueta="Edad actual">{formatEdad(paciente.fechaNacimiento)}</Dato>
+                {paciente.identificacion && 'motivoAusencia' in paciente.identificacion &&
+                  <Dato etiqueta="Motivo de ausencia documental">{paciente.identificacion.motivoAusencia}</Dato>}
                 <Dato etiqueta="Fecha de nacimiento">{formatFechaDia(paciente.fechaNacimiento)}</Dato>
                 <Dato etiqueta="Sexo">{SEXO_ETIQUETA[paciente.sexo]}</Dato>
                 <Dato etiqueta="Teléfono">{paciente.telefono}</Dato>
@@ -84,16 +104,21 @@ export function PacienteDetalleModal({ pacienteId, puedeEscribir, onCerrar, onCa
                 <Dato etiqueta="Dirección" className="col-span-2">{paciente.direccion}</Dato>
               </Datos>
               {puedeEscribir && (
-                <Button tamano="sm" icono={<IconoEditar className="h-3.5 w-3.5" aria-hidden />} onClick={() => setEditando(true)}>
+                <div className="flex flex-col gap-3"><Button tamano="sm" icono={<IconoEditar className="h-3.5 w-3.5" aria-hidden />} onClick={() => setEditando(true)}>
                   Editar datos
                 </Button>
+                {paciente.identificacion && paciente.versionIdentificacion !== undefined &&
+                  <Button tamano="sm" onClick={() => setIdentificando(true)}>
+                    {paciente.identificacion.estado === 'LEGADO_POR_REVISAR' ? 'Revisar identificación' : 'Actualizar identificación'}
+                  </Button>}
+                </div>
               )}
             </div>
 
             <Seccion
               titulo="Solicitudes médicas"
               acciones={
-                puedeEscribir && !nuevaSolicitud ? (
+                puedeSolicitudes && !nuevaSolicitud ? (
                   <Button tamano="sm" variante="primario" icono={<IconoSolicitudes className="h-3.5 w-3.5" aria-hidden />} onClick={() => setNuevaSolicitud(true)}>
                     Nueva solicitud
                   </Button>
@@ -103,6 +128,7 @@ export function PacienteDetalleModal({ pacienteId, puedeEscribir, onCerrar, onCa
               {nuevaSolicitud && (
                 <NuevaSolicitudForm
                   pacienteId={paciente.id}
+                  directorioMedicos={directorioMedicos}
                   guardando={guardandoSolicitud}
                   setGuardando={setGuardandoSolicitud}
                   onCancelar={() => setNuevaSolicitud(false)}
@@ -127,6 +153,8 @@ export function PacienteDetalleModal({ pacienteId, puedeEscribir, onCerrar, onCa
         )}
       </Modal>
 
+      {remitenteSolicitud !== null && <RemitenteSolicitudModal solicitudId={remitenteSolicitud}
+        onCerrar={() => setRemitenteSolicitud(null)} onGuardado={() => { setRemitenteSolicitud(null); recargar(); onCambio(); }} />}
       {editando && paciente && (
         <PacienteFormModal
           paciente={paciente}
@@ -138,12 +166,15 @@ export function PacienteDetalleModal({ pacienteId, puedeEscribir, onCerrar, onCa
           }}
         />
       )}
+      {identificando && paciente && <IdentificacionModal paciente={paciente} onCerrar={() => setIdentificando(false)}
+        onGuardado={() => { setIdentificando(false); recargar(); onCambio(); }} />}
     </>
   );
 }
 
-function NuevaSolicitudForm({ pacienteId, onCancelar, onCreada, guardando, setGuardando }: {
+export function NuevaSolicitudForm({ directorioMedicos, pacienteId, onCancelar, onCreada, guardando, setGuardando }: {
   pacienteId: number;
+  directorioMedicos: boolean;
   onCancelar: () => void;
   onCreada: (codigo: string) => void;
   guardando: boolean;
@@ -151,10 +182,15 @@ function NuevaSolicitudForm({ pacienteId, onCancelar, onCreada, guardando, setGu
 }) {
   const [prioridad, setPrioridad] = useState<Prioridad>('RUTINA');
   const [medico, setMedico] = useState('');
+  const [medicoId, setMedicoId] = useState<number | null>(null);
   const [diagnostico, setDiagnostico] = useState('');
   const [observaciones, setObservaciones] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [detalles, setDetalles] = useState<DetalleCampo[]>([]);
+  const catalogo = useCarga(() => catalogosApi.flujo(), []);
+  const asistida = catalogo.datos?.habilitado === true;
+  const examenes = useCarga(() => asistida ? examenesApi.listar() : Promise.resolve([]), [asistida]);
+  const [seleccion, setSeleccion] = useState<ExamenSolicitadoEntrada[]>([]);
 
   async function enviar(evento: FormEvent<HTMLFormElement>) {
     evento.preventDefault();
@@ -165,9 +201,10 @@ function NuevaSolicitudForm({ pacienteId, onCancelar, onCreada, guardando, setGu
       const solicitud = await solicitudesApi.crear({
         pacienteId,
         prioridad,
-        medicoSolicitante: opcional(medico),
+        ...(directorioMedicos && medicoId !== null ? { medicoRemitenteId: medicoId } : { medicoSolicitante: opcional(medico) }),
         diagnosticoPresuntivo: opcional(diagnostico),
         observaciones: opcional(observaciones),
+        ...(asistida ? { examenesSolicitados: seleccion } : {}),
       });
       setGuardando(false);
       onCreada(solicitud.codigo);
@@ -185,6 +222,7 @@ function NuevaSolicitudForm({ pacienteId, onCancelar, onCreada, guardando, setGu
           <Alert detalles={detalles}>{error}</Alert>
         </div>
       )}
+      {catalogo.error && <div className="md:col-span-3"><Alert>{catalogo.error}</Alert></div>}
       <Campo etiqueta="Prioridad">
         <Select value={prioridad} onValueChange={(value) => setPrioridad(value as Prioridad)}>
           <option value="RUTINA">Rutina</option>
@@ -192,19 +230,28 @@ function NuevaSolicitudForm({ pacienteId, onCancelar, onCreada, guardando, setGu
         </Select>
       </Campo>
       <Campo etiqueta="Médico solicitante">
-        <Input value={medico} onChange={(e) => setMedico(e.target.value)} />
+        <Input maxLength={120} disabled={guardando || (directorioMedicos && medicoId !== null)} value={medico} onChange={(e) => setMedico(e.target.value)} />
       </Campo>
+      <p className="text-xs text-muted md:col-span-3">Seleccione el médico del directorio o escriba el nombre del remitente externo, si se proporciona.</p>
+      {directorioMedicos && <div className="md:col-span-2"><MedicoSelector value={medicoId} onChange={setMedicoId} disabled={guardando} /></div>}
       <Campo etiqueta="Diagnóstico presuntivo">
         <Input value={diagnostico} onChange={(e) => setDiagnostico(e.target.value)} />
       </Campo>
       <Campo etiqueta="Observaciones" className="md:col-span-3">
         <Textarea value={observaciones} onChange={(e) => setObservaciones(e.target.value)} rows={2} />
       </Campo>
+      {asistida && catalogo.datos && <div className="md:col-span-3">
+        {examenes.error && <Alert>{examenes.error}</Alert>}
+        <ExamenesOrdenSelector examenes={examenes.datos ?? []} catalogo={catalogo.datos}
+          value={seleccion} onChange={setSeleccion} disabled={guardando || examenes.cargando}
+          onCatalogoCambio={catalogo.recargar} />
+      </div>}
       <div className="flex flex-wrap items-center justify-end gap-3 border-t border-line pt-4 md:col-span-3">
         <Button onClick={onCancelar} disabled={guardando}>
           Cancelar
         </Button>
-        <Button type="submit" variante="primario" cargando={guardando}>
+        <Button type="submit" variante="primario" cargando={guardando}
+          disabled={catalogo.cargando || !!catalogo.error || (asistida && (!seleccion.length || seleccion.some(i => !i.tipoMuestra) || !!examenes.error))}>
           Crear solicitud
         </Button>
       </div>

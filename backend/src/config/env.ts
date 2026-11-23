@@ -18,6 +18,10 @@ const envSchema = z.object({
   JWT_EXPIRES_IN_SECONDS: z.coerce.number().int().positive().default(60 * 60 * 8),
   BCRYPT_ROUNDS: z.coerce.number().int().min(10).max(15).default(12),
   CORS_ORIGIN: z.string().default('http://localhost:5173'),
+  PACIENTES_IDENTIFICACION_HABILITADA: z.enum(['true', 'false']).default('false').transform(v => v === 'true'),
+  MEDICOS_REMITENTES_HABILITADOS: z.enum(['true', 'false']).default('false').transform(v => v === 'true'),
+  PERMISOS_OPERATIVOS_HABILITADOS: z.enum(['true', 'false']).default('false').transform(v => v === 'true'),
+  ORDENES_ASISTIDAS_HABILITADAS: z.enum(['true', 'false']).default('false').transform(v => v === 'true'),
 });
 
 export type Env = z.infer<typeof envSchema>;

@@ -1,0 +1,84 @@
+{
+  "fecha": "2026-11-23T05:28:06.494Z",
+  "revision": "55119cb9c48982edc1fac680800e98ce8f2ff880",
+  "alcance": "Funciones puras y validadores ejecutados realmente, sin HTTP, sin PrismaClient ni base de datos. No acredita persistencia, autorización HTTP o bloqueos MySQL.",
+  "banderasServidorModificadas": false,
+  "casos": [
+    {
+      "id": "identificacion",
+      "correccion": "Identificación sin documento",
+      "observado": {
+        "estado": "SIN_DOCUMENTO_ASIGNADO",
+        "tipo": null,
+        "numero": null,
+        "paisEmisor": null,
+        "motivoAusencia": "Recién nacido sin documento asignado"
+      }
+    },
+    {
+      "id": "edad-dias",
+      "correccion": "2026-11-10 al 2026-11-23",
+      "observado": "13 días"
+    },
+    {
+      "id": "edad-meses",
+      "correccion": "2026-08-23 al 2026-11-23",
+      "observado": "3 meses"
+    },
+    {
+      "id": "fecha-imposible",
+      "correccion": "Fecha 2026-02-30 válida",
+      "observado": false
+    },
+    {
+      "id": "fecha-futura",
+      "correccion": "Nacimiento 2026-11-24 con referencia 2026-11-23",
+      "observado": null
+    },
+    {
+      "id": "medico-sin-registro",
+      "correccion": "Validador de médico con registro profesional ausente",
+      "observado": true
+    },
+    {
+      "id": "auxiliar",
+      "correccion": "AUXILIAR puede recibir muestras, política operativa como parámetro",
+      "observado": true
+    },
+    {
+      "id": "bacteriologo",
+      "correccion": "BACTERIOLOGO puede validar, política operativa como parámetro",
+      "observado": true
+    },
+    {
+      "id": "sin-administracion",
+      "correccion": "BACTERIOLOGO puede administrar usuarios",
+      "observado": false
+    },
+    {
+      "id": "muestra-no-recibida",
+      "correccion": "Iniciar procesamiento desde REGISTRADA",
+      "observado": false
+    },
+    {
+      "id": "muestra-recibida",
+      "correccion": "Iniciar procesamiento desde RECEPTADA",
+      "observado": true
+    },
+    {
+      "id": "alta-operativa",
+      "correccion": "Validador de alta BACTERIOLOGO conforme (contraseña omitida)",
+      "observado": true
+    },
+    {
+      "id": "alta-admin-rechazada",
+      "correccion": "Validador de alta con rol ADMINISTRADOR",
+      "observado": false
+    },
+    {
+      "id": "clave-debil-rechazada",
+      "correccion": "Validador de alta con contraseña débil (valor omitido)",
+      "observado": false
+    }
+  ]
+}

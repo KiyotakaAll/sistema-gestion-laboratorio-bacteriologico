@@ -1,3 +1,4 @@
+import { identificacionTexto } from '../utils/identificacion';
 import { IconoValidacion } from '../components/icons/LabZenIcon';
 import { useMemo, useState } from 'react';
 import { EstadoResultadoBadge, ETIQUETA_ESTADO_RESULTADO, PrioridadBadge } from '../components/UI/Badge';
@@ -13,9 +14,9 @@ import type { EstadoResultado, ResultadoDetalle } from '../types/api';
 import { formatFechaHora, limpiarParams, nombrePaciente } from '../utils/format';
 
 export default function ValidacionAthenea() {
-  const { usuario, tieneRol } = useAuth();
-  const puedeValidar = tieneRol('VALIDADOR');
-  const [estado, setEstado] = useState<EstadoResultado | ''>(() => tieneRol('BACTERIOLOGO') ? '' : 'PENDIENTE_VALIDACION');
+  const { usuario, puede } = useAuth();
+  const puedeValidar = puede('resultados.validar');
+  const [estado, setEstado] = useState<EstadoResultado | ''>(() => puede('resultados.escribir') ? '' : 'PENDIENTE_VALIDACION');
   const [pagina, setPagina] = useState(1);
   const [seleccionado, setSeleccionado] = useState<ResultadoDetalle | null>(null);
 
@@ -28,7 +29,7 @@ export default function ValidacionAthenea() {
     () => [
       { id: 'prioridad', header: 'Prioridad', accessor: (r) => r.muestraExamen.muestra.solicitud.prioridad, cell: (r) => <PrioridadBadge prioridad={r.muestraExamen.muestra.solicitud.prioridad} />, width: '6.5rem' },
       { id: 'paciente', header: 'Paciente', accessor: (r) => nombrePaciente(r.muestraExamen.muestra.solicitud.paciente), cell: (r) => <span className="font-semibold text-slate-900">{nombrePaciente(r.muestraExamen.muestra.solicitud.paciente)}</span> },
-      { id: 'cedula', header: 'Cédula', accessor: (r) => r.muestraExamen.muestra.solicitud.paciente.cedula, width: '8rem' },
+      { id: 'cedula', header: 'Identificación', accessor: (r) => identificacionTexto(r.muestraExamen.muestra.solicitud.paciente), width: '8rem' },
       { id: 'examen', header: 'Examen', accessor: (r) => r.muestraExamen.examen.nombre },
       { id: 'bacteria', header: 'Bacteria aislada', accessor: (r) => r.bacteriaAislada, cell: (r) => (r.bacteriaAislada ? <span className="italic">{r.bacteriaAislada}</span> : <span className="text-slate-400">—</span>) },
       { id: 'registro', header: 'Registró', accessor: (r) => r.registradoPor.nombreCompleto },
@@ -85,6 +86,7 @@ export default function ValidacionAthenea() {
           usuarioActualId={usuario.id}
           puedeValidar={puedeValidar}
           onCerrar={() => setSeleccionado(null)}
+          onConflicto={recargar}
           onValidado={() => recargar()}
         />
       )}

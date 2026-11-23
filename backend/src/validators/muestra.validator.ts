@@ -10,6 +10,7 @@ export const registrarMuestraSchema = z.object({
   solicitudId: z.number().int().positive(),
   tipoMuestra: z.string().trim().min(2, 'Indique el tipo de muestra').max(60),
   sitioAnatomico: textoOpcional(80),
+  sitioAnatomicoId: z.number().int().positive().optional(),
   fechaToma: z.coerce
     .date()
     .refine((fecha) => fecha.getTime() <= Date.now() + TOLERANCIA_RELOJ_MS, {

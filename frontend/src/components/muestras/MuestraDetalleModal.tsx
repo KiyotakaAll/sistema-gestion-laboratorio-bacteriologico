@@ -1,12 +1,15 @@
+import { permiteTransicionMuestra } from '../../../../backend/src/domain/flujo-clinico';
+import { DocumentoAcciones } from '../documentos/DocumentoAcciones';
+import { identificacionTexto } from '../../utils/identificacion';
 import { IconoRechazado, IconoRecepcionMuestras, IconoProcesamiento } from '../icons/LabZenIcon';
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { useCarga } from '../../hooks/useCarga';
-import { mensajeDeError } from '../../services/api';
+import { esConflictoClinico, mensajeDeError } from '../../services/api';
 import { muestrasApi } from '../../services/laboratorio';
 import type { EventoTrazabilidad, MuestraDetalle } from '../../types/api';
-import { SEXO_ETIQUETA, calcularEdad, formatFechaHora, nombrePaciente } from '../../utils/format';
+import { SEXO_ETIQUETA, edadALaToma, formatFechaHora, nombrePaciente } from '../../utils/format';
 import { Alert } from '../UI/Alert';
 import { Badge, ETIQUETA_ESTADO_MUESTRA, ETIQUETA_ESTADO_RESULTADO, EstadoMuestraBadge, EstadoResultadoBadge, PrioridadBadge } from '../UI/Badge';
 import { Button } from '../UI/Button';
@@ -44,18 +47,19 @@ function motivoDelEvento(evento: EventoTrazabilidad): string | null {
 
 /** Modal Master-Detail de una muestra: datos, exámenes, trazabilidad y acciones según rol y estado. */
 export function MuestraDetalleModal({ muestraId, onCerrar, onCambio }: Props) {
-  const { tieneRol } = useAuth();
+  const { puede } = useAuth();
   const toast = useToast();
   const muestra = useCarga(() => muestrasApi.obtener(muestraId), [muestraId]);
   const trazabilidad = useCarga(() => muestrasApi.trazabilidad(muestraId), [muestraId]);
 
+  const enCurso = useRef(false);
   const [ejecutando, setEjecutando] = useState(false);
   const [errorAccion, setErrorAccion] = useState<string | null>(null);
   const [rechazando, setRechazando] = useState(false);
   const [motivo, setMotivo] = useState('');
 
   const m = muestra.datos;
-  const puedeVerResultados = tieneRol('BACTERIOLOGO', 'VALIDADOR', 'ADMINISTRADOR');
+  const puedeVerResultados = puede('resultados.leer');
 
   const columnasExamenes = useMemo<Column<ExamenFila>[]>(
     () => {
@@ -80,6 +84,8 @@ export function MuestraDetalleModal({ muestraId, onCerrar, onCambio }: Props) {
   );
 
   async function ejecutar(accion: () => Promise<unknown>, mensajeExito: string) {
+    if (enCurso.current || muestra.cargando || muestra.error) return;
+    enCurso.current = true;
     setEjecutando(true);
     setErrorAccion(null);
     try {
@@ -92,14 +98,21 @@ export function MuestraDetalleModal({ muestraId, onCerrar, onCambio }: Props) {
       onCambio();
     } catch (e) {
       setErrorAccion(mensajeDeError(e));
+      if (esConflictoClinico(e)) {
+        muestra.recargar();
+        trazabilidad.recargar();
+        setRechazando(false);
+      }
     } finally {
+      enCurso.current = false;
       setEjecutando(false);
     }
   }
 
-  const puedeReceptar = m?.estado === 'REGISTRADA' && tieneRol('ADMINISTRADOR', 'RECEPCIONISTA');
-  const puedeProcesar = m?.estado === 'RECEPTADA' && tieneRol('BACTERIOLOGO');
-  const puedeRechazar = (m?.estado === 'REGISTRADA' || m?.estado === 'RECEPTADA') && tieneRol('ADMINISTRADOR', 'RECEPCIONISTA', 'BACTERIOLOGO');
+  const disponible = m && !muestra.cargando && !muestra.error;
+  const puedeReceptar = disponible && permiteTransicionMuestra(m.estado, 'RECEPTAR') && puede('muestras.receptar');
+  const puedeProcesar = disponible && permiteTransicionMuestra(m.estado, 'INICIAR_PROCESAMIENTO') && puede('muestras.procesar');
+  const puedeRechazar = disponible && permiteTransicionMuestra(m.estado, 'RECHAZAR') && puede('muestras.rechazar');
 
   return (
     <Modal
@@ -111,6 +124,7 @@ export function MuestraDetalleModal({ muestraId, onCerrar, onCambio }: Props) {
       pie={
         <>
           <Button onClick={onCerrar} disabled={ejecutando}>Cerrar</Button>
+          {m && puede('informes.descargar') && <DocumentoAcciones clase="informe" solicitudId={m.solicitudId} disabled={ejecutando || m.estado !== 'PROCESADA'} />}
           {puedeRechazar && !rechazando && (
             <Button variante="peligro" icono={<IconoRechazado className="h-3.5 w-3.5" aria-hidden />} onClick={() => setRechazando(true)} disabled={ejecutando}>
               Rechazar muestra
@@ -138,15 +152,15 @@ export function MuestraDetalleModal({ muestraId, onCerrar, onCambio }: Props) {
             <Dato etiqueta="Paciente" className="col-span-2">
               <span className="font-semibold">{nombrePaciente(m.solicitud.paciente)}</span>
             </Dato>
-            <Dato etiqueta="Cédula">{m.solicitud.paciente.cedula}</Dato>
-            <Dato etiqueta="Edad y sexo">{`${calcularEdad(m.solicitud.paciente.fechaNacimiento)} años, ${SEXO_ETIQUETA[m.solicitud.paciente.sexo]}`}</Dato>
+            <Dato etiqueta="Identificación">{identificacionTexto(m.solicitud.paciente)}</Dato>
+            <Dato etiqueta="Edad a la toma y sexo">{`${edadALaToma(m.solicitud.paciente.fechaNacimiento, m.fechaToma)}, ${SEXO_ETIQUETA[m.solicitud.paciente.sexo]}`}</Dato>
             <Dato etiqueta="Solicitud">
               <span className="font-mono text-xs">{m.solicitud.codigo}</span>
             </Dato>
             <Dato etiqueta="Prioridad">
               <PrioridadBadge prioridad={m.solicitud.prioridad} />
             </Dato>
-            <Dato etiqueta="Médico solicitante">{m.solicitud.medicoSolicitante}</Dato>
+            <Dato etiqueta="Médico solicitante">{m.solicitud.medicoRemitenteNombre ?? m.solicitud.medicoSolicitante}</Dato>
             <Dato etiqueta="Diagnóstico presuntivo">{m.solicitud.diagnosticoPresuntivo}</Dato>
             <Dato etiqueta="Tipo de muestra">{m.tipoMuestra}</Dato>
             <Dato etiqueta="Sitio anatómico">{m.sitioAnatomico}</Dato>

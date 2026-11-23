@@ -1,5 +1,6 @@
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vitest/config';
+import { fileURLToPath } from 'node:url';
 
 /**
  * Decisión de arquitectura: en desarrollo, Vite hace de proxy de `/api` hacia
@@ -10,6 +11,7 @@ import { defineConfig } from 'vitest/config';
 export default defineConfig({
   plugins: [react()],
   server: {
+    fs: { allow: [fileURLToPath(new URL('.', import.meta.url)), fileURLToPath(new URL('../backend/src/domain', import.meta.url))] },
     port: 5173,
     strictPort: true,
     proxy: {

@@ -16,9 +16,13 @@ import {
 } from '../services/laboratorio';
 import type { RolNombre } from '../types/api';
 
+vi.mock('../services/catalogos', () => ({ catalogosApi: { flujo: vi.fn(async () => ({ habilitado: false, tiposMuestra: [], sitios: [], plantillas: [] })) } }));
+
+vi.mock('../services/medicos', () => ({ medicosApi: { capacidades: vi.fn(async () => ({ directorioMedicos: false })) } }));
+
 vi.mock('../services/laboratorio', () => ({
   authApi: { perfil: vi.fn(), login: vi.fn() },
-  pacientesApi: { listar: vi.fn(), obtener: vi.fn(), crear: vi.fn(), actualizar: vi.fn() },
+  pacientesApi: { capacidades: vi.fn(async () => ({ identificacionPacientes: false })), listar: vi.fn(), obtener: vi.fn(), crear: vi.fn(), actualizar: vi.fn() },
   solicitudesApi: { listar: vi.fn(), obtener: vi.fn(), crear: vi.fn() },
   examenesApi: { listar: vi.fn() },
   muestrasApi: { listar: vi.fn(), obtener: vi.fn(), porCodigo: vi.fn(), trazabilidad: vi.fn(), registrar: vi.fn(), receptar: vi.fn(), procesar: vi.fn(), rechazar: vi.fn() },
@@ -379,7 +383,7 @@ describe('Validación con doble firma', () => {
     await u.click(await screen.findByRole('button', { name: /Validar resultado/ }));
     expect(screen.getByText(/ya no podrá modificarse/)).toBeInTheDocument();
     await u.click(screen.getByRole('button', { name: 'Confirmar validación' }));
-    await waitFor(() => expect(resultadosApi.validar).toHaveBeenCalledWith(7));
+    await waitFor(() => expect(resultadosApi.validar).toHaveBeenCalledWith(7, FECHA));
     expect(await screen.findByText('Dra. Ortiz')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Validar resultado/ })).not.toBeInTheDocument();
   });
@@ -399,7 +403,7 @@ describe('Validación con doble firma', () => {
     entrar('/validacion', 'ADMINISTRADOR', 1);
     const u = userEvent.setup();
     await u.click(await screen.findByText('Pérez, Ana'));
-    expect(await screen.findByText(/solo un validador puede firmarlo/)).toBeInTheDocument();
+    expect(await screen.findByText(/Su perfil permite consultar este resultado, pero no autoriza su firma/)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Validar resultado/ })).not.toBeInTheDocument();
   });
 });
@@ -543,7 +547,7 @@ async function prepararGuardadoModal(caso: GuardadoModal) {
     vi.mocked(muestrasApi.registrar).mockReturnValue(pendiente.promesa as never);
     entrar('/recepcion', 'RECEPCIONISTA');
     await usuario.click(await screen.findByRole('button', { name: 'Registrar muestra' }));
-    await usuario.type(screen.getByLabelText('Cédula del paciente'), `${ana.cedula}{Enter}`);
+    await usuario.type(screen.getByLabelText('Identificación del paciente'), `${ana.cedula}{Enter}`);
     await usuario.click(await screen.findByText(solicitud(ana).codigo));
     await usuario.click(screen.getByRole('checkbox', { name: /Urocultivo/ }));
     await usuario.type(screen.getByLabelText('Sitio anatómico'), 'Sitio de prueba');
@@ -700,21 +704,24 @@ describe('Formularios modales: cierre durante peticiones pendientes', () => {
 
 describe('Registro de muestra', () => {
   it('permite buscar la solicitud por cédula y registrar con exámenes', async () => {
-    vi.mocked(solicitudesApi.listar).mockResolvedValue(paginado([{ ...solicitud(ana), _count: { muestras: 0 } }]) as never);
+    // ID de solicitud distinto del ID de paciente: evita confundir ambas identidades.
+    const solicitudElegida = { ...solicitud(ana), id: 314, _count: { muestras: 0 } };
+    vi.mocked(solicitudesApi.listar).mockResolvedValue(paginado([solicitudElegida]) as never);
     vi.mocked(examenesApi.listar).mockResolvedValue([examen] as never);
-    vi.mocked(muestrasApi.registrar).mockResolvedValue({ ...muestra(ana), examenes: [], recepcionadoPor: null, solicitud: { ...solicitud(ana), paciente: ana } } as never);
+    vi.mocked(muestrasApi.registrar).mockResolvedValue({ ...muestra(ana), solicitudId: 314, examenes: [], recepcionadoPor: null, solicitud: { ...solicitudElegida, paciente: ana } } as never);
     vi.mocked(muestrasApi.obtener).mockResolvedValue({ ...muestra(ana), examenes: [], recepcionadoPor: null, solicitud: { ...solicitud(ana), paciente: ana } } as never);
     vi.mocked(muestrasApi.trazabilidad).mockResolvedValue([] as never);
     entrar('/recepcion', 'RECEPCIONISTA');
     const u = userEvent.setup();
     await u.click(await screen.findByRole('button', { name: /Registrar muestra/ }));
-    await u.type(await screen.findByLabelText('Cédula del paciente'), '10001{Enter}');
+    await u.type(await screen.findByLabelText('Identificación del paciente'), '10001{Enter}');
+    await waitFor(() => expect(solicitudesApi.listar).toHaveBeenCalledWith({ cedula: '10001', pageSize: 20 }));
     await u.click(await screen.findByText('SOL-2026-000001'));
     await u.click(await screen.findByRole('checkbox', { name: /Urocultivo/ }));
     // El tipo de muestra se sugiere a partir del examen elegido.
     expect(screen.getByLabelText('Tipo de muestra')).toHaveValue('Orina');
     await u.click(screen.getAllByRole('button', { name: 'Registrar muestra' }).at(-1) as HTMLElement);
     await waitFor(() => expect(muestrasApi.registrar).toHaveBeenCalledTimes(1));
-    expect(muestrasApi.registrar).toHaveBeenCalledWith(expect.objectContaining({ solicitudId: 1, tipoMuestra: 'Orina', examenIds: [1] }));
+    expect(muestrasApi.registrar).toHaveBeenCalledWith(expect.objectContaining({ solicitudId: 314, tipoMuestra: 'Orina', examenIds: [1] }));
   });
 });

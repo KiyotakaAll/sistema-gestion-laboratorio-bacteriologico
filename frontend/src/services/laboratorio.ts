@@ -1,6 +1,7 @@
 import type { AxiosResponse } from 'axios';
 import type {
   EdicionPaciente,
+  IdentificacionEntrada,
   EstadoMuestra,
   EstadoResultado,
   EventoTrazabilidad,
@@ -12,6 +13,8 @@ import type {
   NuevaSolicitud,
   NuevoPaciente,
   NuevoResultado,
+  NuevoUsuarioAdministrativo,
+  PerfilOperativo,
   Paciente,
   PacienteDetalle,
   Paginado,
@@ -44,23 +47,35 @@ export const authApi = {
 };
 
 export const usuariosApi = {
-  listar: (params: Paginacion & { q?: string; estado?: 'todos' | 'inactivos' | 'activos' }) =>
+  capacidades: () => api.get<{ data: { roles: PerfilOperativo[] } }>('/usuarios/capacidades').then(datos),
+  crear: (cuerpo: NuevoUsuarioAdministrativo) =>
+    api.post<{ data: UsuarioAdministracion }>('/usuarios', cuerpo).then(datos),
+  listar: (params: Paginacion & { q?: string; estado?: 'todos' | 'inactivos' | 'activos' | 'eliminados' }) =>
     api.get<Paginado<UsuarioAdministracion>>('/usuarios', { params }).then(pagina),
   activar: (id: number) =>
-    api.patch<{ data: { id: number; activo: true } }>(`/usuarios/${id}/activar`, {}).then(datos),
+    api.patch<{ data: { id: number; activo: boolean; eliminadoAt: string | null } }>(`/usuarios/${id}/activar`, {}).then(datos),
+  desactivar: (id: number) =>
+    api.patch<{ data: { id: number; activo: boolean; eliminadoAt: string | null } }>(`/usuarios/${id}/desactivar`, {}).then(datos),
+  eliminar: (id: number) =>
+    api.delete<{ data: { id: number; activo: boolean; eliminadoAt: string } }>(`/usuarios/${id}`).then(datos),
+  asignarPerfil: (id: number, rol: PerfilOperativo) =>
+    api.patch<{ data: { id: number; activo: boolean; rol: PerfilOperativo } }>(`/usuarios/${id}/perfil`, { rol }).then(datos),
 };
 
 export const pacientesApi = {
-  listar: (params: Paginacion & { q?: string }) =>
+  capacidades: () => api.get<{ data: { identificacionPacientes: boolean; registroPacientes?: boolean } }>('/pacientes/capacidades').then(datos),
+  listar: (params: Paginacion & { q?: string; tipoDocumento?: string; numeroDocumento?: string; paisEmisorDocumento?: string }) =>
     api.get<Paginado<Paciente>>('/pacientes', { params }).then(pagina),
   obtener: (id: number) => api.get<{ data: PacienteDetalle }>(`/pacientes/${id}`).then(datos),
   crear: (cuerpo: NuevoPaciente) => api.post<{ data: Paciente }>('/pacientes', cuerpo).then(datos),
   actualizar: (id: number, cuerpo: EdicionPaciente) =>
     api.put<{ data: Paciente }>(`/pacientes/${id}`, cuerpo).then(datos),
+  identificar: (id: number, cuerpo: { identificacion: IdentificacionEntrada; motivoCambio: string; versionIdentificacion: number }) =>
+    api.patch<{ data: Paciente }>(`/pacientes/${id}/identificacion`, cuerpo).then(datos),
 };
 
 export const solicitudesApi = {
-  listar: (params: Paginacion & { pacienteId?: number; cedula?: string; prioridad?: Prioridad }) =>
+  listar: (params: Paginacion & { pacienteId?: number; cedula?: string; q?: string; prioridad?: Prioridad }) =>
     api.get<Paginado<SolicitudLista>>('/solicitudes', { params }).then(pagina),
   obtener: (id: number) => api.get<{ data: SolicitudDetalle }>(`/solicitudes/${id}`).then(datos),
   crear: (cuerpo: NuevaSolicitud) =>
@@ -113,7 +128,7 @@ export const resultadosApi = {
   obtener: (id: number) => api.get<{ data: ResultadoDetalle }>(`/resultados/${id}`).then(datos),
   registrar: (cuerpo: NuevoResultado) =>
     api.post<{ data: ResultadoDetalle }>('/resultados', cuerpo).then(datos),
-  actualizar: (id: number, cuerpo: HallazgosEntrada) =>
+  actualizar: (id: number, cuerpo: HallazgosEntrada & { updatedAt: string }) =>
     api.put<{ data: ResultadoDetalle }>(`/resultados/${id}`, cuerpo).then(datos),
-  validar: (id: number) => api.patch<{ data: ResultadoDetalle }>(`/resultados/${id}/validar`).then(datos),
+  validar: (id: number, updatedAt: string) => api.patch<{ data: ResultadoDetalle }>(`/resultados/${id}/validar`, { updatedAt }).then(datos),
 };

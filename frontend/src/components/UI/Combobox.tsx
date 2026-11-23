@@ -24,6 +24,7 @@ export function Combobox({ value, onValueChange, options, allowFreeText = false,
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const filtered = useMemo(() => options.filter((o) => normalizarBusqueda(query ?? '').split(/\s+/).every((word) => normalizarBusqueda(o.label).includes(word))), [options, query]);
   const list = useRef<Array<HTMLElement | null>>([]);
+  const restaurandoFoco = useRef(false);
   const { refs, context, floatingStyles, portalRoot } = useControlFloating(open, setOpen);
   const dismiss = useDismiss(context, { bubbles: false, escapeKey: false });
   const role = useRole(context, { role: 'combobox' });
@@ -36,7 +37,9 @@ export function Combobox({ value, onValueChange, options, allowFreeText = false,
     const option = filtered[index];
     if (!option || option.disabled) return;
     onValueChange(option.value); setConfirmed(option.value); setQuery(null); setOpen(false);
+    restaurandoFoco.current = true;
     refs.domReference.current?.focus({ preventScroll: true });
+    restaurandoFoco.current = false;
   }
   function openList() { if (!disabled) { setQuery(''); setActiveIndex(null); setOpen(true); } }
   const status = query !== null && query !== ''
@@ -51,7 +54,8 @@ export function Combobox({ value, onValueChange, options, allowFreeText = false,
         'aria-activedescendant': open && activeIndex !== null ? `${listId}-${activeIndex}` : undefined,
         'aria-describedby': [props['aria-describedby'], statusId, error && `${inputId}-error`].filter(Boolean).join(' '),
         'aria-invalid': error ? true : props['aria-invalid'],
-        onFocus: openList,
+        onFocus() { if (!restaurandoFoco.current) openList(); },
+        onClick() { if (!open) openList(); },
         onBlur(event) { if (!refs.floating.current?.contains(event.relatedTarget as Node)) setOpen(false); },
         onChange(event: ChangeEvent<HTMLInputElement>) { const text = event.target.value; setQuery(text); setActiveIndex(null); setOpen(true); if (allowFreeText) onValueChange(text); },
         onKeyDown(event) {

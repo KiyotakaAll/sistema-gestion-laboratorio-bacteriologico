@@ -5,6 +5,9 @@ import ordenRoutes from './orden.routes';
 import pacienteRoutes from './paciente.routes';
 import resultadoRoutes from './resultado.routes';
 import usuarioRoutes from './usuario.routes';
+import medicoRoutes from './medico.routes';
+import catalogoRoutes from './catalogo.routes';
+import documentoRoutes from './documento.routes';
 
 /**
  * Router raíz montado en `/api` por app.ts. Cada módulo vive en su propio
@@ -21,6 +24,9 @@ const router = Router();
 
 router.use('/auth', authRoutes);
 router.use('/usuarios', usuarioRoutes);
+router.use('/medicos', medicoRoutes);
+router.use('/catalogos', catalogoRoutes);
+router.use('/', documentoRoutes);
 router.use('/pacientes', pacienteRoutes);
 router.use('/', ordenRoutes);
 router.use('/muestras', muestraRoutes);

@@ -14,7 +14,7 @@ import type { WorklistItem } from '../types/api';
 import { formatFechaHora, nombrePaciente } from '../utils/format';
 
 export default function WorklistResultados() {
-  const { tieneRol } = useAuth();
+  const { puede } = useAuth();
   const [soloPendientes, setSoloPendientes] = useState(true);
   const [seleccionado, setSeleccionado] = useState<WorklistItem | null>(null);
 
@@ -71,8 +71,9 @@ export default function WorklistResultados() {
         <ResultadoFormModal
           key={seleccionado.id}
           item={seleccionado}
-          puedeEditar={tieneRol('BACTERIOLOGO')}
+          puedeEditar={puede('resultados.escribir')}
           onCerrar={() => setSeleccionado(null)}
+          onConflicto={recargar}
           onGuardado={() => {
             setSeleccionado(null);
             recargar();

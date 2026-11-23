@@ -3,12 +3,13 @@ import { useToast } from '../../context/ToastContext';
 import { detallesDeError, mensajeDeError, type DetalleCampo } from '../../services/api';
 import { pacientesApi } from '../../services/laboratorio';
 import type { Paciente, Sexo } from '../../types/api';
-import { aInputFecha, opcional } from '../../utils/format';
+import { aInputFecha, opcional, diaColombia } from '../../utils/format';
+import { identificacionTexto } from '../../utils/identificacion';
+import { IdentificacionCampos, identificacionInicial, entradaIdentificacion, ErrorIdentificacionFormulario } from './IdentificacionCampos';
 import { Alert } from '../UI/Alert';
 import { Button } from '../UI/Button';
 import { Campo, Input, Select } from '../UI/Form';
 import { DatePicker } from '../UI/DatePicker';
-import { todayCivil } from '../UI/civilDate';
 import { Modal } from '../UI/Modal';
 
 interface Props {
@@ -16,13 +17,15 @@ interface Props {
   paciente: Paciente | null;
   onCerrar: () => void;
   onGuardado: (paciente: Paciente) => void;
+  identificacionHabilitada?: boolean;
 }
 
 const ID_FORMULARIO = 'form-paciente';
 
-export function PacienteFormModal({ paciente, onCerrar, onGuardado }: Props) {
+export function PacienteFormModal({ paciente, onCerrar, onGuardado, identificacionHabilitada = false }: Props) {
   const toast = useToast();
   const [cedula, setCedula] = useState(paciente?.cedula ?? '');
+  const [identificacion, setIdentificacion] = useState(() => identificacionInicial());
   const [nombres, setNombres] = useState(paciente?.nombres ?? '');
   const [apellidos, setApellidos] = useState(paciente?.apellidos ?? '');
   const [fechaNacimiento, setFechaNacimiento] = useState(paciente ? aInputFecha(paciente.fechaNacimiento) : '');
@@ -45,19 +48,20 @@ export function PacienteFormModal({ paciente, onCerrar, onGuardado }: Props) {
       apellidos: apellidos.trim(),
       fechaNacimiento,
       sexo,
-      telefono: opcional(telefono),
-      email: opcional(email),
-      direccion: opcional(direccion),
+      telefono: opcional(telefono) ?? (paciente ? null : undefined),
+      email: opcional(email) ?? (paciente ? null : undefined),
+      direccion: opcional(direccion) ?? (paciente ? null : undefined),
     };
 
     try {
       const guardado = paciente
         ? await pacientesApi.actualizar(paciente.id, datos)
-        : await pacientesApi.crear({ cedula: cedula.trim(), ...datos });
+        : await pacientesApi.crear({ ...datos, ...(identificacionHabilitada
+          ? { identificacion: entradaIdentificacion(identificacion) } : { cedula: cedula.trim() }) });
       toast.exito(paciente ? 'Datos del paciente actualizados' : 'Paciente registrado');
       onGuardado(guardado);
     } catch (e) {
-      setError(mensajeDeError(e));
+      setError(e instanceof ErrorIdentificacionFormulario ? e.message : mensajeDeError(e));
       setDetalles(detallesDeError(e));
       setGuardando(false);
     }
@@ -68,7 +72,7 @@ export function PacienteFormModal({ paciente, onCerrar, onGuardado }: Props) {
       abierto
       ancho="md"
       titulo={paciente ? 'Editar paciente' : 'Registrar paciente'}
-      subtitulo={paciente ? `Cédula ${paciente.cedula}` : undefined}
+      subtitulo={paciente ? (paciente.identificacion ? identificacionTexto(paciente) : paciente.cedula ? `Cédula ${paciente.cedula}` : 'Identificación no disponible') : undefined}
       onCerrar={() => { if (!guardando) onCerrar(); }}
       pie={
         <>
@@ -87,12 +91,14 @@ export function PacienteFormModal({ paciente, onCerrar, onGuardado }: Props) {
             <Alert detalles={detalles}>{error}</Alert>
           </div>
         )}
+        {!paciente && identificacionHabilitada && <IdentificacionCampos value={identificacion} onChange={setIdentificacion} />}
         <fieldset className="lz-form-section"><legend>Datos del paciente</legend><div className="grid grid-cols-2 gap-x-4 gap-y-4">
+        {!identificacionHabilitada && !paciente?.identificacion &&
         <Campo etiqueta="Cédula">
           <Input value={cedula} onChange={(e) => setCedula(e.target.value)} disabled={paciente !== null} required autoFocus={!paciente} />
-        </Campo>
+        </Campo>}
         <Campo etiqueta="Fecha de nacimiento">
-          <DatePicker value={fechaNacimiento} onValueChange={setFechaNacimiento} min="1900-01-01" max={todayCivil()} required />
+          <DatePicker value={fechaNacimiento} onValueChange={setFechaNacimiento} min="1900-01-01" max={diaColombia()} required />
         </Campo>
         <Campo etiqueta="Nombres">
           <Input value={nombres} onChange={(e) => setNombres(e.target.value)} required />

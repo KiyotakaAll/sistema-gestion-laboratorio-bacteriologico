@@ -1,8 +1,16 @@
+import { seleccionExamen, ordenesAsistidasActivas, exigirOrdenesAsistidas, prepararExamenesSolicitados } from './catalogo.service';
+import { normalizarCatalogo } from '../domain/catalogo-clinico';
+import { TRANSICIONES_MUESTRA, permiteTransicionMuestra, type AccionMuestra } from '../domain/flujo-clinico';
+import { bloquearMuestra, exigirPermisoClinico, transaccionClinica } from './flujo-clinico.service';
+import type { Permiso } from '../domain/permisos';
+import { puedeRol } from './permisos.service';
+import { seleccionSolicitudBase } from './medicos-disponibilidad';
+import { seleccionPaciente, seleccionPacienteResumen, filtroDocumento } from './identificacion-paciente';
 import { randomInt } from 'node:crypto';
-import { EstadoMuestra, Prisma } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 import { prisma } from '../config/prisma';
 import type { RolNombre } from '../types/auth';
-import type { AuditContext, EventoTrazabilidad, Paginado } from '../types/dto';
+import type { AuditContext, EventoTrazabilidad, Paginado, TxClient } from '../types/dto';
 import { AppError } from '../types/errors';
 import type {
   ListarMuestrasQuery,
@@ -11,27 +19,27 @@ import type {
 import { obtenerHistorial, registrarLog } from './auditoria.service';
 
 /** Datos livianos para tablas densas (sin antibiograma ni resultados completos). */
-const muestraListaInclude = {
+const muestraListaInclude = () => ({
   solicitud: {
     select: {
       id: true,
       codigo: true,
       prioridad: true,
-      paciente: { select: { id: true, cedula: true, nombres: true, apellidos: true } },
+      paciente: { select: seleccionPacienteResumen() },
     },
   },
   examenes: { select: { id: true, examen: { select: { id: true, codigo: true, nombre: true } } } },
-} satisfies Prisma.MuestraInclude;
+}) satisfies Prisma.MuestraInclude;
 
 /** Solo los roles clínicos autorizados consultan la relación de resultados. */
-function muestraDetalleInclude(rol: RolNombre) {
-  const puedeVerResultados = ['BACTERIOLOGO', 'VALIDADOR', 'ADMINISTRADOR'].includes(rol);
+async function muestraDetalleInclude(rol: RolNombre, cliente: TxClient = prisma) {
+  const puedeVerResultados = puedeRol(rol, 'resultados.leer');
   return {
-    solicitud: { include: { paciente: true } },
+    solicitud: { select: { ...await seleccionSolicitudBase(cliente), paciente: { select: seleccionPaciente() } } },
     recepcionadoPor: { select: { id: true, username: true, nombreCompleto: true } },
     examenes: {
       include: {
-        examen: true,
+        examen: { select: seleccionExamen() },
         ...(puedeVerResultados
           ? { resultado: { include: { antibiograma: { orderBy: { antibiotico: 'asc' as const } } } } }
           : {}),
@@ -64,7 +72,9 @@ function generarCodigoBarras(): string {
 }
 
 export async function registrarMuestra(input: RegistrarMuestraInput, ctx: AuditContext, rol: RolNombre) {
-  return prisma.$transaction(async (tx) => {
+  if (ordenesAsistidasActivas() || input.sitioAnatomicoId !== undefined) await exigirOrdenesAsistidas();
+  return transaccionClinica(async (tx) => {
+    rol = await exigirPermisoClinico(tx, ctx, 'muestras.registrar');
     const solicitud = await tx.solicitud.findUnique({
       where: { id: input.solicitudId },
       select: { id: true },
@@ -85,6 +95,30 @@ export async function registrarMuestra(input: RegistrarMuestraInput, ctx: AuditC
       );
     }
 
+    let sitioAnatomico = input.sitioAnatomico;
+    let tipoMuestra = input.tipoMuestra;
+    if (ordenesAsistidasActivas()) {
+      const preparados = await prepararExamenesSolicitados(tx, input.examenIds.map(examenId => ({
+        examenId, tipoMuestra: input.tipoMuestra, sitioAnatomicoId: input.sitioAnatomicoId,
+      })));
+      sitioAnatomico = preparados[0]?.sitioAnatomico ?? undefined;
+      tipoMuestra = preparados[0]?.tipoMuestra ?? input.tipoMuestra;
+      if (input.sitioAnatomico && normalizarCatalogo(input.sitioAnatomico) !== normalizarCatalogo(sitioAnatomico ?? ''))
+        throw new AppError(422, 'Seleccione el sitio desde el catálogo.', 'SITIO_INCOMPATIBLE');
+      // Serializa asignaciones para no consumir dos veces un examen de la orden.
+      await tx.$queryRaw`SELECT id FROM solicitudes WHERE id = ${input.solicitudId} FOR UPDATE`;
+      const orden = await tx.solicitudExamen.findMany({ where: { solicitudId: input.solicitudId } });
+      if (orden.length) {
+        if (input.examenIds.some(id => !orden.some(l => l.examenId === id
+          && normalizarCatalogo(l.tipoMuestra) === normalizarCatalogo(input.tipoMuestra)
+          && (l.sitioAnatomicoId ?? null) === (input.sitioAnatomicoId ?? null))))
+          throw new AppError(422, 'La muestra debe corresponder a los exámenes y sitios de la orden.', 'ORDEN_MUESTRA_INCOMPATIBLE');
+        const asignados = await tx.muestraExamen.count({ where: { examenId: { in: input.examenIds },
+          muestra: { solicitudId: input.solicitudId, estado: { not: 'RECHAZADA' } } } });
+        if (asignados) throw new AppError(409, 'Algún examen ya tiene una muestra activa. Actualice la solicitud.', 'EXAMEN_YA_ASIGNADO');
+      }
+    }
+
     // La unicidad real la garantiza el UNIQUE de BD; este bucle solo evita el reintento manual.
     let codigoBarras = generarCodigoBarras();
     while (await tx.muestra.findUnique({ where: { codigoBarras }, select: { id: true } })) {
@@ -95,12 +129,12 @@ export async function registrarMuestra(input: RegistrarMuestraInput, ctx: AuditC
       data: {
         codigoBarras,
         solicitudId: input.solicitudId,
-        tipoMuestra: input.tipoMuestra,
-        sitioAnatomico: input.sitioAnatomico,
+        tipoMuestra,
+        sitioAnatomico,
         fechaToma: input.fechaToma,
         examenes: { create: input.examenIds.map((examenId) => ({ examenId })) },
       },
-      include: muestraDetalleInclude(rol),
+      include: await muestraDetalleInclude(rol, tx),
     });
 
     await registrarLog(tx, {
@@ -121,7 +155,7 @@ export async function listarMuestras(filtros: ListarMuestrasQuery) {
   const where: Prisma.MuestraWhereInput = {
     ...(filtros.estado ? { estado: filtros.estado } : {}),
     ...(filtros.codigoBarras ? { codigoBarras: { contains: filtros.codigoBarras.toUpperCase() } } : {}),
-    ...(filtros.cedula ? { solicitud: { paciente: { cedula: { contains: filtros.cedula } } } } : {}),
+    ...(filtros.cedula ? { solicitud: { paciente: filtroDocumento(filtros.cedula) } } : {}),
     ...(filtros.desde || filtros.hasta
       ? {
           fechaToma: {
@@ -135,7 +169,7 @@ export async function listarMuestras(filtros: ListarMuestrasQuery) {
   const [data, total] = await prisma.$transaction([
     prisma.muestra.findMany({
       where,
-      include: muestraListaInclude,
+      include: muestraListaInclude(),
       orderBy: { fechaToma: 'desc' },
       skip: (filtros.page - 1) * filtros.pageSize,
       take: filtros.pageSize,
@@ -154,7 +188,7 @@ export async function listarMuestras(filtros: ListarMuestrasQuery) {
 }
 
 export async function obtenerMuestraPorId(id: number, rol: RolNombre) {
-  const muestra = await prisma.muestra.findUnique({ where: { id }, include: muestraDetalleInclude(rol) });
+  const muestra = await prisma.muestra.findUnique({ where: { id }, include: await muestraDetalleInclude(rol) });
   if (!muestra) {
     throw new AppError(404, 'La muestra no existe.', 'MUESTRA_NO_ENCONTRADA');
   }
@@ -165,7 +199,7 @@ export async function obtenerMuestraPorId(id: number, rol: RolNombre) {
 export async function obtenerMuestraPorCodigoBarras(codigoBarras: string, rol: RolNombre) {
   const muestra = await prisma.muestra.findUnique({
     where: { codigoBarras },
-    include: muestraDetalleInclude(rol),
+    include: await muestraDetalleInclude(rol),
   });
   if (!muestra) {
     throw new AppError(404, 'No existe una muestra con ese código de barras.', 'MUESTRA_NO_ENCONTRADA');
@@ -183,9 +217,8 @@ export async function obtenerTrazabilidadMuestra(id: number): Promise<EventoTraz
 
 interface Transicion {
   id: number;
-  desde: EstadoMuestra[];
-  hasta: EstadoMuestra;
-  accion: string;
+  accion: AccionMuestra;
+  permiso: Permiso;
   ctx: AuditContext;
   rol: RolNombre;
   /** Campos adicionales a escribir; recibe la fecha de recepción actual por si ya existe. */
@@ -195,13 +228,16 @@ interface Transicion {
 
 /**
  * Cambio de estado atómico y a prueba de concurrencia:
- *  1. Lee el estado actual y valida que la transición sea legal.
+ *  1. Verifica la cuenta vigente, bloquea la muestra y valida la transición.
  *  2. `updateMany` con `estado` en el WHERE: si otro usuario cambió la muestra
  *     entre el paso 1 y el 2, count = 0 y se aborta (bloqueo optimista).
  *  3. Registra la auditoría en la misma transacción.
  */
-async function transicionar({ id, desde, hasta, accion, ctx, rol, datos, detalle }: Transicion) {
-  return prisma.$transaction(async (tx) => {
+async function transicionar({ id, accion, permiso, ctx, rol, datos, detalle }: Transicion) {
+  const { desde, hasta } = TRANSICIONES_MUESTRA[accion];
+  return transaccionClinica(async (tx) => {
+    rol = await exigirPermisoClinico(tx, ctx, permiso);
+    await bloquearMuestra(tx, id);
     const actual = await tx.muestra.findUnique({
       where: { id },
       select: { estado: true, fechaRecepcion: true },
@@ -209,7 +245,7 @@ async function transicionar({ id, desde, hasta, accion, ctx, rol, datos, detalle
     if (!actual) {
       throw new AppError(404, 'La muestra no existe.', 'MUESTRA_NO_ENCONTRADA');
     }
-    if (!desde.includes(actual.estado)) {
+    if (!permiteTransicionMuestra(actual.estado, accion)) {
       throw new AppError(
         409,
         `No es posible ejecutar "${accion}" sobre una muestra en estado ${actual.estado}.`,
@@ -241,7 +277,7 @@ async function transicionar({ id, desde, hasta, accion, ctx, rol, datos, detalle
       ip: ctx.ip,
     });
 
-    return tx.muestra.findUniqueOrThrow({ where: { id }, include: muestraDetalleInclude(rol) });
+    return tx.muestra.findUniqueOrThrow({ where: { id }, include: await muestraDetalleInclude(rol, tx) });
   });
 }
 
@@ -250,8 +286,7 @@ export function receptarMuestra(id: number, ctx: AuditContext, rol: RolNombre) {
     id,
     ctx,
     rol,
-    desde: [EstadoMuestra.REGISTRADA],
-    hasta: EstadoMuestra.RECEPTADA,
+    permiso: 'muestras.receptar',
     accion: 'RECEPTAR',
     datos: () => ({ fechaRecepcion: new Date(), usuarioIdRecepciona: ctx.usuarioId }),
   });
@@ -262,8 +297,7 @@ export function iniciarProcesamiento(id: number, ctx: AuditContext, rol: RolNomb
     id,
     ctx,
     rol,
-    desde: [EstadoMuestra.RECEPTADA],
-    hasta: EstadoMuestra.EN_PROCESAMIENTO,
+    permiso: 'muestras.procesar',
     accion: 'INICIAR_PROCESAMIENTO',
     datos: () => ({ fechaProcesamiento: new Date() }),
   });
@@ -279,8 +313,7 @@ export function rechazarMuestra(id: number, motivoRechazo: string, ctx: AuditCon
     id,
     ctx,
     rol,
-    desde: [EstadoMuestra.REGISTRADA, EstadoMuestra.RECEPTADA],
-    hasta: EstadoMuestra.RECHAZADA,
+    permiso: 'muestras.rechazar',
     accion: 'RECHAZAR',
     detalle: { motivoRechazo },
     datos: (actual) => ({

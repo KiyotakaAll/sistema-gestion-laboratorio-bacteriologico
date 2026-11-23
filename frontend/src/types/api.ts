@@ -2,8 +2,9 @@
  * Tipos que reflejan las respuestas del backend. Las fechas llegan como string
  * ISO (JSON no tiene tipo Date) y los DECIMAL de MySQL como string.
  */
-export const ROLES = ['ADMINISTRADOR', 'RECEPCIONISTA', 'BACTERIOLOGO', 'VALIDADOR'] as const;
-export type RolNombre = (typeof ROLES)[number];
+export { ROLES, type RolNombre } from '../../../backend/src/domain/permisos';
+import type { Autorizacion, PerfilOperativo, RolNombre } from '../../../backend/src/domain/permisos';
+export type { PerfilOperativo } from '../../../backend/src/domain/permisos';
 
 export type Sexo = 'M' | 'F' | 'O';
 export type Prioridad = 'RUTINA' | 'URGENTE';
@@ -17,6 +18,7 @@ export interface UsuarioSesion {
   email?: string;
   nombreCompleto: string;
   rol: RolNombre;
+  autorizacion?: Autorizacion;
 }
 
 export interface UsuarioResumen {
@@ -28,7 +30,17 @@ export interface UsuarioResumen {
 export interface UsuarioAdministracion extends UsuarioSesion {
   email: string;
   activo: boolean;
+  eliminadoAt?: string | null;
   createdAt: string;
+}
+
+export interface NuevoUsuarioAdministrativo {
+  nombreCompleto: string;
+  username: string;
+  email: string;
+  password: string;
+  confirmacion: string;
+  rol: PerfilOperativo;
 }
 
 export interface SesionIniciada {
@@ -52,7 +64,9 @@ export interface ApiErrorBody {
 
 export interface Paciente {
   id: number;
-  cedula: string;
+  cedula: string | null;
+  identificacion?: IdentificacionPublica;
+  versionIdentificacion?: number;
   nombres: string;
   apellidos: string;
   fechaNacimiento: string;
@@ -64,7 +78,18 @@ export interface Paciente {
   updatedAt: string;
 }
 
-export type PacienteResumen = Pick<Paciente, 'id' | 'cedula' | 'nombres' | 'apellidos'>;
+export type PacienteResumen = Pick<Paciente, 'id' | 'cedula' | 'nombres' | 'apellidos' | 'identificacion' | 'versionIdentificacion'>;
+
+export type TipoDocumento = 'CC' | 'TI' | 'RC' | 'CE' | 'PA' | 'PPT';
+export type IdentificacionEntrada =
+  | { estado: 'DOCUMENTADO'; tipo: TipoDocumento; numero: string; paisEmisor?: string }
+  | { estado: 'SIN_DOCUMENTO_ASIGNADO' | 'DOCUMENTO_NO_DISPONIBLE'; tipo: null; numero: null;
+      paisEmisor: null; motivoAusencia: string };
+export type IdentificacionPublica =
+  | { estado: 'DOCUMENTADO'; tipo: TipoDocumento; numero: string; paisEmisor: string }
+  | { estado: 'SIN_DOCUMENTO_ASIGNADO' | 'DOCUMENTO_NO_DISPONIBLE'; tipo: null; numero: null;
+      paisEmisor: null; motivoAusencia: string }
+  | { estado: 'LEGADO_POR_REVISAR'; tipo: null; numero: null; paisEmisor: null; valorLegado: string };
 
 export interface SolicitudBase {
   id: number;
@@ -72,6 +97,8 @@ export interface SolicitudBase {
   pacienteId: number;
   usuarioIdRegistra: number;
   medicoSolicitante: string | null;
+  medicoRemitenteId?: number | null;
+  medicoRemitenteNombre?: string | null;
   diagnosticoPresuntivo: string | null;
   prioridad: Prioridad;
   fechaSolicitud: string;
@@ -99,6 +126,8 @@ export interface Examen {
   descripcion: string | null;
   precio: string;
   activo: boolean;
+  instruccionesToma?: string | null;
+  sitiosPermitidos?: string[] | null;
 }
 
 export interface ExamenResumen {
@@ -175,6 +204,8 @@ export interface SolicitudDetalle extends SolicitudBase {
   paciente: Paciente;
   registradoPor: UsuarioResumen;
   muestras: (MuestraBase & { examenes: { id: number; examen: ExamenResumen }[] })[];
+  examenesSolicitados?: { id: number; examenId: number; tipoMuestra: string; sitioAnatomicoId: number | null;
+    sitioAnatomico: string | null; instruccionesToma: string | null; examen: Examen }[];
 }
 
 export interface EventoTrazabilidad {
@@ -206,31 +237,37 @@ export interface WorklistItem extends MuestraExamenBase {
 
 /* ---------- Cuerpos de petición ---------- */
 
-export interface NuevoPaciente {
-  cedula: string;
+interface DatosPaciente {
   nombres: string;
   apellidos: string;
   fechaNacimiento: string;
   sexo: Sexo;
-  telefono?: string;
-  email?: string;
-  direccion?: string;
+  telefono?: string | null;
+  email?: string | null;
+  direccion?: string | null;
 }
 
-export type EdicionPaciente = Omit<NuevoPaciente, 'cedula'>;
+export type NuevoPaciente = DatosPaciente & (
+  | { cedula: string; identificacion?: never }
+  | { cedula?: never; identificacion: IdentificacionEntrada }
+);
+export type EdicionPaciente = DatosPaciente;
 
 export interface NuevaSolicitud {
   pacienteId: number;
   prioridad: Prioridad;
   medicoSolicitante?: string;
+  medicoRemitenteId?: number | null;
   diagnosticoPresuntivo?: string;
   observaciones?: string;
+  examenesSolicitados?: import('../services/catalogos').ExamenSolicitadoEntrada[];
 }
 
 export interface NuevaMuestra {
   solicitudId: number;
   tipoMuestra: string;
   sitioAnatomico?: string;
+  sitioAnatomicoId?: number;
   fechaToma: string;
   examenIds: number[];
 }

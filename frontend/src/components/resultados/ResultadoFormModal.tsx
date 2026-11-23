@@ -1,10 +1,12 @@
+import { permiteResultado } from '../../../../backend/src/domain/flujo-clinico';
+import { identificacionTexto } from '../../utils/identificacion';
 import { Plus, Trash2 } from 'lucide-react';
-import { useState, type FormEvent } from 'react';
+import { useRef, useState, type FormEvent } from 'react';
 import { useToast } from '../../context/ToastContext';
-import { detallesDeError, mensajeDeError, type DetalleCampo } from '../../services/api';
+import { detallesDeError, esConflictoClinico, mensajeDeError, type DetalleCampo } from '../../services/api';
 import { resultadosApi } from '../../services/laboratorio';
 import type { AntibiogramaEntrada, Sensibilidad, WorklistItem } from '../../types/api';
-import { SEXO_ETIQUETA, calcularEdad, formatFechaHora, nombrePaciente, opcional } from '../../utils/format';
+import { SEXO_ETIQUETA, edadALaToma, formatFechaHora, nombrePaciente, opcional } from '../../utils/format';
 import { Alert } from '../UI/Alert';
 import { EstadoResultadoBadge, ETIQUETA_SENSIBILIDAD, PrioridadBadge } from '../UI/Badge';
 import { Button } from '../UI/Button';
@@ -20,6 +22,7 @@ interface Props {
   puedeEditar: boolean;
   onCerrar: () => void;
   onGuardado: () => void;
+  onConflicto?: () => void;
 }
 
 interface FilaAntibiograma {
@@ -41,10 +44,10 @@ const ID_FORMULARIO = 'form-resultado';
 let contadorFilas = 0;
 const nuevaClave = () => `fila-${(contadorFilas += 1)}`;
 
-export function ResultadoFormModal({ item, puedeEditar, onCerrar, onGuardado }: Props) {
+export function ResultadoFormModal({ item, puedeEditar, onCerrar, onGuardado, onConflicto }: Props) {
   const toast = useToast();
   const existente = item.resultado;
-  const bloqueado = existente?.estado === 'VALIDADO';
+  const bloqueado = existente?.estado === 'VALIDADO' || !permiteResultado(item.muestra.estado, existente ? 'corregir' : 'registrar');
   const soloLectura = bloqueado || !puedeEditar;
 
   const [hallazgoGram, setHallazgoGram] = useState(existente?.hallazgoGram ?? '');
@@ -60,6 +63,8 @@ export function ResultadoFormModal({ item, puedeEditar, onCerrar, onGuardado }: 
         haloMm: a.haloMm ?? '',
       })) ?? [],
   );
+  const enCurso = useRef(false);
+  const [obsoleto, setObsoleto] = useState(false);
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [detalles, setDetalles] = useState<DetalleCampo[]>([]);
@@ -72,6 +77,8 @@ export function ResultadoFormModal({ item, puedeEditar, onCerrar, onGuardado }: 
 
   async function enviar(evento: FormEvent<HTMLFormElement>) {
     evento.preventDefault();
+    if (enCurso.current || soloLectura || obsoleto) return;
+    enCurso.current = true;
     setError(null);
     setDetalles([]);
 
@@ -94,7 +101,7 @@ export function ResultadoFormModal({ item, puedeEditar, onCerrar, onGuardado }: 
     setGuardando(true);
     try {
       if (existente) {
-        await resultadosApi.actualizar(existente.id, hallazgos);
+        await resultadosApi.actualizar(existente.id, { ...hallazgos, updatedAt: existente.updatedAt });
         toast.exito('Resultado corregido, queda pendiente de validación');
       } else {
         await resultadosApi.registrar({ muestraExamenId: item.id, ...hallazgos });
@@ -102,9 +109,12 @@ export function ResultadoFormModal({ item, puedeEditar, onCerrar, onGuardado }: 
       }
       onGuardado();
     } catch (e) {
-      setError(mensajeDeError(e));
+      if (esConflictoClinico(e)) { setObsoleto(true); onConflicto?.(); }
+      setError(esConflictoClinico(e) ? `${mensajeDeError(e)} Cierre y vuelva a abrir el examen para revisar los datos actuales. Sus cambios no se han guardado.` : mensajeDeError(e));
       setDetalles(detallesDeError(e));
       setGuardando(false);
+    } finally {
+      enCurso.current = false;
     }
   }
 
@@ -123,7 +133,7 @@ export function ResultadoFormModal({ item, puedeEditar, onCerrar, onGuardado }: 
             <Button onClick={onCerrar} disabled={guardando}>
               Cancelar
             </Button>
-            <Button type="submit" form={ID_FORMULARIO} variante="primario" cargando={guardando}>
+            <Button type="submit" form={ID_FORMULARIO} variante="primario" cargando={guardando} disabled={obsoleto}>
               {existente ? 'Guardar corrección' : 'Guardar resultado'}
             </Button>
           </>
@@ -134,8 +144,8 @@ export function ResultadoFormModal({ item, puedeEditar, onCerrar, onGuardado }: 
         <Dato etiqueta="Paciente" className="col-span-2">
           <span className="font-semibold">{nombrePaciente(paciente)}</span>
         </Dato>
-        <Dato etiqueta="Cédula">{paciente.cedula}</Dato>
-        <Dato etiqueta="Edad y sexo">{`${calcularEdad(paciente.fechaNacimiento)} años, ${SEXO_ETIQUETA[paciente.sexo]}`}</Dato>
+        <Dato etiqueta="Identificación">{identificacionTexto(paciente)}</Dato>
+        <Dato etiqueta="Edad a la toma y sexo">{`${edadALaToma(paciente.fechaNacimiento, item.muestra.fechaToma)}, ${SEXO_ETIQUETA[paciente.sexo]}`}</Dato>
         <Dato etiqueta="Código de barras">
           <span className="font-mono text-xs">{item.muestra.codigoBarras}</span>
         </Dato>
@@ -151,7 +161,7 @@ export function ResultadoFormModal({ item, puedeEditar, onCerrar, onGuardado }: 
         {soloLectura ? (
           existente ? (
             <>
-              {bloqueado && <div className="mb-3"><Alert tipo="info">Este resultado ya fue validado y no puede modificarse.</Alert></div>}
+              {bloqueado && <div className="mb-3"><Alert tipo="info">{existente?.estado === 'VALIDADO' ? 'Este resultado ya fue validado y no puede modificarse.' : 'El estado actual de la muestra no permite modificar estos hallazgos.'}</Alert></div>}
               <ResultadoLectura resultado={existente} />
             </>
           ) : (

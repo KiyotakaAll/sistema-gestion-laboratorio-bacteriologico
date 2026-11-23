@@ -9,6 +9,8 @@ datasource db {
 
 model Rol {
   id          Int       @id @default(autoincrement()) @db.UnsignedInt
+  // String deliberado: catálogo histórico + AUXILIAR, controlado por CHECK SQL y política.
+  // No convertir usuarios ni añadir permisos administrativos implícitos al perfil clínico.
   nombre      String    @unique(map: "uq_roles_nombre") @db.VarChar(30)
   descripcion String    @db.VarChar(150)
   usuarios    Usuario[]
@@ -24,6 +26,8 @@ model Usuario {
   nombreCompleto         String         @map("nombre_completo") @db.VarChar(120)
   passwordHash           String         @map("password_hash") @db.VarChar(255)
   activo                 Boolean        @default(true)
+  eliminadoAt            DateTime?      @map("eliminado_at") @db.DateTime(3)
+  versionSesion          Int            @default(0) @map("version_sesion") @db.UnsignedInt
   ultimoAcceso           DateTime?      @map("ultimo_acceso")
   createdAt              DateTime       @default(now()) @map("created_at")
   updatedAt              DateTime       @default(now()) @updatedAt @map("updated_at")
@@ -40,7 +44,15 @@ model Usuario {
 
 model Paciente {
   id              Int         @id @default(autoincrement()) @db.UnsignedInt
-  cedula          String      @unique(map: "uq_pacientes_cedula") @db.VarChar(20)
+  cedula          String?     @unique(map: "uq_pacientes_cedula") @db.VarChar(20)
+  // dbgenerated: el cliente NO materializa estos defaults en INSERT del modo antiguo.
+  estadoIdentificacion String @default(dbgenerated("'LEGADO_POR_REVISAR'")) @map("estado_identificacion") @db.VarChar(32)
+  tipoDocumento String? @map("tipo_documento") @db.VarChar(3)
+  numeroDocumento String? @map("numero_documento") @db.VarChar(20)
+  paisEmisorDocumento String? @map("pais_emisor_documento") @db.VarChar(2)
+  claveIdentificacion String? @unique(map: "uq_pacientes_clave_identificacion") @map("clave_identificacion") @db.VarChar(64)
+  motivoAusenciaDocumento String? @map("motivo_ausencia_documento") @db.VarChar(255)
+  versionIdentificacion Int @default(dbgenerated("0")) @map("version_identificacion") @db.UnsignedInt
   nombres         String      @db.VarChar(80)
   apellidos       String      @db.VarChar(80)
   fechaNacimiento DateTime    @map("fecha_nacimiento") @db.Date
@@ -63,6 +75,10 @@ model Solicitud {
   pacienteId            Int       @map("paciente_id") @db.UnsignedInt
   usuarioIdRegistra     Int       @map("usuario_id_registra") @db.UnsignedInt
   medicoSolicitante     String?   @map("medico_solicitante") @db.VarChar(120)
+  // Texto anterior inmutable; la nueva instantánea cambia solo al elegir otro remitente.
+  medicoRemitenteId     Int?      @map("medico_remitente_id") @db.UnsignedInt
+  medicoRemitenteNombre String?   @map("medico_remitente_nombre") @db.VarChar(120)
+  medicoRemitente       MedicoRemitente? @relation(fields: [medicoRemitenteId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_solicitudes_medico_remitente")
   diagnosticoPresuntivo String?   @map("diagnostico_presuntivo") @db.VarChar(255)
   prioridad             Prioridad @default(RUTINA)
   fechaSolicitud        DateTime  @default(now()) @map("fecha_solicitud")
@@ -70,13 +86,35 @@ model Solicitud {
   createdAt             DateTime  @default(now()) @map("created_at")
   updatedAt             DateTime  @default(now()) @updatedAt @map("updated_at")
   muestras              Muestra[]
+  examenesSolicitados   SolicitudExamen[]
   paciente              Paciente  @relation(fields: [pacienteId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_solicitudes_paciente")
   registradoPor         Usuario   @relation(fields: [usuarioIdRegistra], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_solicitudes_usuario_registra")
 
   @@index([pacienteId], map: "idx_solicitudes_paciente")
   @@index([fechaSolicitud], map: "idx_solicitudes_fecha")
   @@index([usuarioIdRegistra], map: "idx_solicitudes_registra")
+  @@index([medicoRemitenteId], map: "idx_solicitudes_medico_remitente")
   @@map("solicitudes")
+}
+
+model MedicoRemitente {
+  id                  Int      @id @default(autoincrement()) @db.UnsignedInt
+  nombres             String   @db.VarChar(80)
+  apellidos           String   @db.VarChar(80)
+  registroProfesional String?  @unique(map: "uq_medicos_registro") @map("registro_profesional") @db.VarChar(50)
+  especialidad        String?  @db.VarChar(100)
+  telefono            String?  @db.VarChar(25)
+  email               String?  @db.VarChar(120)
+  institucion         String?  @db.VarChar(120)
+  // Huella de ficha completa con contacto: nunca se calcula solo por nombre.
+  claveDuplicado      String?  @unique(map: "uq_medicos_duplicado") @map("clave_duplicado") @db.VarChar(64)
+  activo              Boolean  @default(true)
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @default(now()) @updatedAt @map("updated_at")
+  solicitudes         Solicitud[]
+
+  @@index([apellidos, nombres], map: "idx_medicos_nombre")
+  @@map("medicos_remitentes")
 }
 
 model Examen {
@@ -87,10 +125,53 @@ model Examen {
   descripcion          String?         @db.VarChar(255)
   precio               Decimal         @default(0.00) @db.Decimal(10, 2)
   activo               Boolean         @default(true)
+  instruccionesToma    String?         @map("instrucciones_toma") @db.VarChar(1000)
+  sitiosPermitidos     Json?           @map("sitios_permitidos")
   muestraExamenes      MuestraExamen[]
+  solicitudesExamenes  SolicitudExamen[]
 
   @@index([nombre], map: "idx_examenes_nombre")
   @@map("examenes")
+}
+
+model SitioAnatomico {
+  id           Int      @id @default(autoincrement()) @db.UnsignedInt
+  nombre       String   @db.VarChar(80)
+  clave        String   @unique(map: "uq_sitios_clave") @db.VarChar(160)
+  tiposMuestra Json     @map("tipos_muestra")
+  activo       Boolean  @default(true)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at")
+  ordenes      SolicitudExamen[]
+  @@map("sitios_anatomicos")
+}
+
+model PlantillaExamenes {
+  id        Int      @id @default(autoincrement()) @db.UnsignedInt
+  nombre    String   @db.VarChar(80)
+  clave     String   @unique(map: "uq_plantillas_clave") @db.VarChar(160)
+  examenIds Json     @map("examen_ids")
+  activo    Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+  @@map("plantillas_examenes")
+}
+
+model SolicitudExamen {
+  id                Int      @id @default(autoincrement()) @db.UnsignedInt
+  solicitudId       Int      @map("solicitud_id") @db.UnsignedInt
+  examenId          Int      @map("examen_id") @db.UnsignedInt
+  tipoMuestra       String   @map("tipo_muestra") @db.VarChar(60)
+  sitioAnatomicoId  Int?     @map("sitio_anatomico_id") @db.UnsignedInt
+  sitioAnatomico    String?  @map("sitio_anatomico") @db.VarChar(80)
+  instruccionesToma String?  @map("instrucciones_toma") @db.VarChar(1000)
+  createdAt         DateTime @default(now()) @map("created_at")
+  solicitud         Solicitud @relation(fields: [solicitudId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  examen            Examen @relation(fields: [examenId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  sitio             SitioAnatomico? @relation(fields: [sitioAnatomicoId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  @@unique([solicitudId, examenId], map: "uq_solicitud_examen")
+  @@index([examenId], map: "idx_orden_examen")
+  @@index([sitioAnatomicoId], map: "idx_orden_sitio")
+  @@map("solicitudes_examenes")
 }
 
 model Muestra {

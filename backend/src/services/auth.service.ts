@@ -1,3 +1,5 @@
+import { autorizacionVigente, politicaOperativaActiva, rolRegistroPublico } from './permisos.service';
+import { rolHabilitado } from '../domain/permisos';
 import bcrypt from 'bcrypt';
 import { randomUUID } from 'node:crypto';
 import { Prisma } from '@prisma/client';
@@ -26,6 +28,8 @@ function validarRol(nombre: string): RolNombre {
   if (!rol) {
     throw new AppError(500, 'El usuario tiene un rol no reconocido.', 'ROL_INVALIDO');
   }
+  if (!rolHabilitado(rol, politicaOperativaActiva()))
+    throw new AppError(403, 'El perfil operativo aún no está habilitado.', 'PERFIL_NO_HABILITADO');
   return rol;
 }
 
@@ -52,7 +56,7 @@ export async function iniciarSesion(input: LoginInput, ip: string | null): Promi
     throw credencialesInvalidas();
   }
 
-  if (!coincide || !usuario.activo) {
+  if (!coincide || !usuario.activo || usuario.eliminadoAt) {
     // Se audita el intento fallido de un usuario real (entidad_id no admite NULL).
     await prisma.$transaction(async (tx) => {
       await registrarLog(tx, {
@@ -67,9 +71,12 @@ export async function iniciarSesion(input: LoginInput, ip: string | null): Promi
     throw credencialesInvalidas();
   }
 
-  const rol = validarRol(usuario.rol.nombre);
-
-  await prisma.$transaction(async (tx) => {
+  const vigente = await prisma.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT id FROM usuarios WHERE id = ${usuario.id} FOR UPDATE`;
+    const actual = await tx.usuario.findUnique({ where: { id: usuario.id }, include: { rol: { select: { nombre: true } } } });
+    if (!actual?.activo || actual.eliminadoAt || actual.passwordHash !== usuario.passwordHash)
+      throw credencialesInvalidas();
+    const rol = validarRol(actual.rol.nombre);
     await tx.usuario.update({ where: { id: usuario.id }, data: { ultimoAcceso: new Date() } });
     await registrarLog(tx, {
       usuarioId: usuario.id,
@@ -78,17 +85,22 @@ export async function iniciarSesion(input: LoginInput, ip: string | null): Promi
       accion: 'LOGIN',
       ip,
     });
+    return { usuario: actual, rol };
   });
+  const rol = vigente.rol;
 
   const token = jwt.sign(
-    { sub: String(usuario.id), username: usuario.username, nombre: usuario.nombreCompleto, rol },
+    { sub: String(vigente.usuario.id), username: vigente.usuario.username, nombre: vigente.usuario.nombreCompleto, rol,
+      sesion: vigente.usuario.versionSesion ?? 0,
+      ...(politicaOperativaActiva() ? { politica: 'operativa-v1' } : {}),
+    },
     env.JWT_SECRET,
     { algorithm: 'HS256', expiresIn: env.JWT_EXPIRES_IN_SECONDS },
   );
 
   return {
     token,
-    usuario: { id: usuario.id, username: usuario.username, email: usuario.email, nombreCompleto: usuario.nombreCompleto, rol },
+    usuario: { id: usuario.id, username: usuario.username, email: usuario.email, nombreCompleto: usuario.nombreCompleto, rol, autorizacion: autorizacionVigente(rol) },
   };
 }
 
@@ -98,7 +110,7 @@ export async function obtenerPerfil(usuarioId: number): Promise<AuthenticatedUse
     where: { id: usuarioId },
     include: { rol: { select: { nombre: true } } },
   });
-  if (!usuario || !usuario.activo) {
+  if (!usuario || !usuario.activo || usuario.eliminadoAt) {
     throw new AppError(401, 'La sesión ya no es válida.', 'SESION_INVALIDA');
   }
   return {
@@ -107,6 +119,7 @@ export async function obtenerPerfil(usuarioId: number): Promise<AuthenticatedUse
     email: usuario.email,
     nombreCompleto: usuario.nombreCompleto,
     rol: validarRol(usuario.rol.nombre),
+    autorizacion: autorizacionVigente(usuario.rol.nombre),
   };
 }
 
@@ -121,12 +134,15 @@ export async function registrarCuenta(input: RegistroInput): Promise<{ mensaje: 
 }
 
 async function crearCuentaInactiva(input: RegistroInput): Promise<{ mensaje: string }> {
+  const nombreRol = rolRegistroPublico();
+  if (nombreRol === null) throw new AppError(403,
+    'El registro público está deshabilitado. Contacte a la administración del laboratorio.', 'REGISTRO_PUBLICO_DESHABILITADO');
   const respuesta = { mensaje: 'Solicitud recibida. Si el correo está disponible, la cuenta quedará pendiente de activación por el laboratorio. Después podrá iniciar sesión con su correo.' };
   // Se calcula también para duplicados para no exponer la existencia del correo.
   const passwordHash = await bcrypt.hash(input.password, env.BCRYPT_ROUNDS);
   const existente = await prisma.usuario.findUnique({ where: { email: input.email }, select: { id: true } });
   if (existente) return respuesta;
-  const rol = await prisma.rol.findUnique({ where: { nombre: 'RECEPCIONISTA' }, select: { id: true } });
+  const rol = await prisma.rol.findUnique({ where: { nombre: nombreRol }, select: { id: true } });
   if (!rol) throw new AppError(503, 'El registro no está disponible. Contacte al laboratorio.', 'REGISTRO_NO_DISPONIBLE');
   try {
     await prisma.usuario.create({ data: {

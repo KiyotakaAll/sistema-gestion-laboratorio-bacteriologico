@@ -58,3 +58,8 @@ export function detallesDeError(error: unknown): DetalleCampo[] {
       typeof d === 'object' && d !== null && 'campo' in d && 'mensaje' in d,
   );
 }
+
+/** Un conflicto exige volver a consultar y revisar; nunca se reintenta una firma automáticamente. */
+export function esConflictoClinico(error: unknown): boolean {
+  return axios.isAxiosError(error) && error.response?.status === 409;
+}

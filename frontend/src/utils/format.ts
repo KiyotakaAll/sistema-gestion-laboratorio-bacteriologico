@@ -1,4 +1,6 @@
 import type { Sexo } from '../types/api';
+import { diaColombia, edadCivil, fechaCivilValida } from '../../../backend/src/domain/fechaCivil';
+export { diaColombia, edadCivil, fechaCivilValida };
 
 const VACIO = '—';
 
@@ -20,15 +22,26 @@ export function formatFechaDia(iso?: string | null): string {
   return iso ? fechaUtc.format(new Date(iso)) : VACIO;
 }
 
-export function calcularEdad(fechaNacimientoIso: string): number {
-  const nacimiento = new Date(fechaNacimientoIso);
-  const hoy = new Date();
-  let edad = hoy.getFullYear() - nacimiento.getUTCFullYear();
-  const mes = hoy.getMonth() - nacimiento.getUTCMonth();
-  if (mes < 0 || (mes === 0 && hoy.getDate() < nacimiento.getUTCDate())) {
-    edad -= 1;
-  }
-  return edad;
+function nacimientoCivil(iso: string): string {
+  return /^\d{4}-\d{2}-\d{2}(?:T00:00:00(?:\.000)?Z)?$/.test(iso) ? iso.slice(0, 10) : '';
+}
+
+/** Compatibilidad para consumidores que necesitan años; las pantallas usan formatEdad. */
+export function calcularEdad(iso: string, referencia = diaColombia()): number | null {
+  const edad = edadCivil(nacimientoCivil(iso), referencia);
+  return edad ? (edad.unidad === 'años' ? edad.valor : 0) : null;
+}
+
+export function formatEdad(iso: string, referencia = diaColombia()): string {
+  const edad = edadCivil(nacimientoCivil(iso), referencia);
+  if (!edad) return VACIO;
+  const unidad = edad.valor === 1 ? ({ años: 'año', meses: 'mes', días: 'día' } as const)[edad.unidad] : edad.unidad;
+  return `${edad.valor} ${unidad}`;
+}
+
+export function edadALaToma(iso: string, toma: string): string {
+  const instante = new Date(toma);
+  return Number.isFinite(instante.getTime()) ? formatEdad(iso, diaColombia(instante)) : VACIO;
 }
 
 export function nombrePaciente(p: { nombres: string; apellidos: string }): string {

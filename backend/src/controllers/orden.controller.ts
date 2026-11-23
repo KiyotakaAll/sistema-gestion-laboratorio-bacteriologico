@@ -1,7 +1,9 @@
 import * as ordenService from '../services/orden.service';
-import { asyncHandler, auditContext } from '../utils/http';
+import { auditContext } from '../utils/http';
+import { handlerConPacientes as asyncHandler } from '../utils/http-pacientes';
 import { idParamSchema } from '../validators/common.validator';
 import { crearSolicitudSchema, listarSolicitudesQuerySchema } from '../validators/orden.validator';
+import { remitenteSolicitudSchema } from '../validators/medico.validator';
 
 export const listar = asyncHandler(async (req, res) => {
   const filtros = listarSolicitudesQuerySchema.parse(req.query);
@@ -20,4 +22,10 @@ export const crear = asyncHandler(async (req, res) => {
 
 export const examenes = asyncHandler(async (_req, res) => {
   res.json({ data: await ordenService.listarExamenes() });
+});
+
+export const actualizarRemitente = asyncHandler(async (req, res) => {
+  const { id } = idParamSchema.parse(req.params);
+  const { medicoRemitenteId } = remitenteSolicitudSchema.parse(req.body);
+  res.json({ data: await ordenService.actualizarRemitente(id, medicoRemitenteId, auditContext(req)) });
 });

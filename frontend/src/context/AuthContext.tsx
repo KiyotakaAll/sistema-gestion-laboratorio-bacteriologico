@@ -9,7 +9,8 @@ import {
 } from 'react';
 import { SESSION_EXPIRED_EVENT, TOKEN_KEY } from '../services/api';
 import { authApi } from '../services/laboratorio';
-import type { RolNombre, UsuarioSesion } from '../types/api';
+import type { UsuarioSesion } from '../types/api';
+import { puedeUsuario, type Permiso } from '../utils/permisos';
 
 interface AuthContextValue {
   usuario: UsuarioSesion | null;
@@ -17,7 +18,7 @@ interface AuthContextValue {
   cargando: boolean;
   iniciarSesion: (username: string, password: string) => Promise<void>;
   cerrarSesion: () => void;
-  tieneRol: (...roles: RolNombre[]) => boolean;
+  puede: (permiso: Permiso | undefined) => boolean;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -66,14 +67,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUsuario(sesion.usuario);
   }, []);
 
-  const tieneRol = useCallback(
-    (...roles: RolNombre[]) => usuario !== null && roles.includes(usuario.rol),
+  const puede = useCallback(
+    (permiso: Permiso | undefined) => puedeUsuario(usuario, permiso),
     [usuario],
   );
 
   const valor = useMemo(
-    () => ({ usuario, cargando, iniciarSesion, cerrarSesion, tieneRol }),
-    [usuario, cargando, iniciarSesion, cerrarSesion, tieneRol],
+    () => ({ usuario, cargando, iniciarSesion, cerrarSesion, puede }),
+    [usuario, cargando, iniciarSesion, cerrarSesion, puede],
   );
 
   return <AuthContext.Provider value={valor}>{children}</AuthContext.Provider>;

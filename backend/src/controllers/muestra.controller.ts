@@ -1,5 +1,6 @@
 import * as muestraService from '../services/muestra.service';
-import { asyncHandler, auditContext } from '../utils/http';
+import { auditContext } from '../utils/http';
+import { handlerConPacientes as asyncHandler } from '../utils/http-pacientes';
 import { idParamSchema } from '../validators/common.validator';
 import {
   codigoBarrasParamSchema,

@@ -3,7 +3,7 @@ import { IconoEnProceso, IconoResultados, IconoWorklist, IconoPendiente, IconoMu
 import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PageHeader, PanelHeading } from '../components/UI/PageHeader';
-import { rolesDeRuta } from '../components/navigation';
+import { permisoDeRuta } from '../components/navigation';
 import { EstadoMuestraBadge, ETIQUETA_ESTADO_MUESTRA } from '../components/UI/Badge';
 import { DataTable, type Column } from '../components/UI/DataTable';
 import { useAuth } from '../context/AuthContext';
@@ -17,11 +17,11 @@ const ESTADOS: EstadoMuestra[] = [...FLUJO, 'RECHAZADA'];
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const { usuario, tieneRol } = useAuth();
-  const veRecepcion = tieneRol(...rolesDeRuta('/recepcion'));
-  const veResultados = tieneRol(...rolesDeRuta('/validacion'));
-  const rutaResultados = tieneRol('BACTERIOLOGO') ? '/worklist' : '/validacion';
-  const abreResultados = tieneRol(...rolesDeRuta(rutaResultados));
+  const { usuario, puede } = useAuth();
+  const veRecepcion = puede(permisoDeRuta('/recepcion'));
+  const veResultados = puede(permisoDeRuta('/validacion'));
+  const rutaResultados = puede('resultados.escribir') ? '/worklist' : '/validacion';
+  const abreResultados = puede(permisoDeRuta(rutaResultados));
   const IndicadorMuestra = veRecepcion ? 'button' : 'div';
   const IndicadorResultados = abreResultados ? 'button' : 'div';
 
@@ -50,9 +50,9 @@ export default function Dashboard() {
   const accesos = [
     { ruta: '/admision', titulo: 'Pacientes', detalle: 'Pacientes y solicitudes · Admisión y consulta', icono: IconoPacientes },
     { ruta: '/recepcion', titulo: 'Muestras', detalle: 'Recepción de muestras · Registro y trazabilidad', icono: IconoMuestras },
-    { ruta: '/worklist', titulo: 'Worklist', detalle: `${tieneRol('BACTERIOLOGO') ? 'Ingresar resultados' : 'Consultar worklist'} · Exámenes en procesamiento`, icono: IconoWorklist },
+    { ruta: '/worklist', titulo: 'Worklist', detalle: `${puede('resultados.escribir') ? 'Ingresar resultados' : 'Consultar worklist'} · Exámenes en procesamiento`, icono: IconoWorklist },
     { ruta: '/validacion', titulo: 'Resultados', detalle: 'Consultar resultados · Revisión de hallazgos', icono: IconoResultados },
-  ].filter((acceso) => tieneRol(...rolesDeRuta(acceso.ruta)));
+  ].filter((acceso) => puede(permisoDeRuta(acceso.ruta)));
 
   return <>
     <PageHeader contexto="Visión operativa del laboratorio"
@@ -117,7 +117,7 @@ export default function Dashboard() {
             <ul className="lz-task-list">
               {pendientes.datos?.data.slice(0, 4).map((r: ResultadoDetalle) => {
                 const contenido = <><span className="lz-task-dot" aria-hidden /><span><strong>{nombrePaciente(r.muestraExamen.muestra.solicitud.paciente)}</strong><span>{r.muestraExamen.examen.nombre}</span><small>{formatFechaHora(r.fechaRegistro)}</small></span><ArrowRight size={16} aria-hidden /></>;
-                return <li key={r.id}>{tieneRol('ADMINISTRADOR', 'VALIDADOR')
+                return <li key={r.id}>{(puede('usuarios.administrar') || puede('resultados.validar'))
                   ? <button type="button" onClick={() => navigate('/validacion')}>{contenido}</button>
                   : <div>{contenido}</div>}</li>;
               })}

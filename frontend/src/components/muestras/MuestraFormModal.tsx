@@ -1,6 +1,10 @@
 
 import { IconoBuscar } from '../icons/LabZenIcon';
 import { useEffect, useState, type FormEvent } from 'react';
+import { useAuth } from '../../context/AuthContext';
+import { catalogosApi } from '../../services/catalogos';
+import { SitioSelector } from './SitioSelector';
+import { normalizarBusqueda } from '../UI/controlTypes';
 import { useToast } from '../../context/ToastContext';
 import { useCarga } from '../../hooks/useCarga';
 import {
@@ -16,6 +20,7 @@ import {
 import type {
   MuestraDetalle,
   SolicitudLista,
+  SolicitudDetalle,
 } from '../../types/api';
 import {
   ahoraParaInput,
@@ -66,7 +71,13 @@ export function MuestraFormModal({
   onRegistrada,
 }: Props) {
   const toast = useToast();
+  const { puede } = useAuth();
   const examenes = useCarga(() => examenesApi.listar(), []);
+  const catalogo = useCarga(() => catalogosApi.flujo(), []);
+  const asistida = catalogo.datos?.habilitado === true;
+  const [orden, setOrden] = useState<SolicitudDetalle | null>(null);
+  const [sitioId, setSitioId] = useState<number | null>(null);
+  const [buscarExamen, setBuscarExamen] = useState('');
 
   const [solicitud, setSolicitud] =
     useState<SolicitudElegida | null>(null);
@@ -89,6 +100,19 @@ export function MuestraFormModal({
   const [detalles, setDetalles] =
     useState<DetalleCampo[]>([]);
 
+  function cargarOrden(s: SolicitudDetalle) {
+    setOrden(s);
+    const asignados = new Set((s.muestras ?? []).filter(m => m.estado !== 'RECHAZADA').flatMap(m => m.examenes.map(e => e.examen.id)));
+    const pendiente = s.examenesSolicitados?.find(e => !asignados.has(e.examenId));
+    if (pendiente) elegirGrupo(s, pendiente);
+  }
+  function elegirGrupo(s: SolicitudDetalle, linea: NonNullable<SolicitudDetalle['examenesSolicitados']>[number]) {
+    const asignados = new Set(s.muestras.filter(m => m.estado !== 'RECHAZADA').flatMap(m => m.examenes.map(e => e.examen.id)));
+    setTipoMuestra(linea.tipoMuestra); setSitioId(linea.sitioAnatomicoId);
+    setElegidos((s.examenesSolicitados ?? []).filter(e => !asignados.has(e.examenId)
+      && e.tipoMuestra === linea.tipoMuestra && e.sitioAnatomicoId === linea.sitioAnatomicoId).map(e => e.examenId));
+  }
+
   // Conserva la solicitud preseleccionada.
   useEffect(() => {
     if (solicitudIdInicial === null) return;
@@ -99,6 +123,7 @@ export function MuestraFormModal({
       .obtener(solicitudIdInicial)
       .then((s) => {
         if (vigente) {
+          cargarOrden(s);
           setSolicitud({
             id: s.id,
             codigo: s.codigo,
@@ -117,6 +142,14 @@ export function MuestraFormModal({
     };
   }, [solicitudIdInicial]);
 
+  useEffect(() => {
+    if (!asistida || !solicitud || orden?.id === solicitud.id) return;
+    let vigente = true;
+    solicitudesApi.obtener(solicitud.id).then(s => { if (vigente) cargarOrden(s); })
+      .catch(e => { if (vigente) setError(mensajeDeError(e)); });
+    return () => { vigente = false; };
+  }, [asistida, solicitud?.id]);
+
   async function buscarSolicitudes() {
     if (!cedula.trim()) return;
 
@@ -125,7 +158,7 @@ export function MuestraFormModal({
 
     try {
       const respuesta = await solicitudesApi.listar({
-        cedula: cedula.trim(),
+        ...(/^\d+$/.test(cedula.trim()) ? { cedula: cedula.trim() } : { q: cedula.trim() }),
         pageSize: 20,
       });
 
@@ -176,7 +209,7 @@ export function MuestraFormModal({
       const muestra = await muestrasApi.registrar({
         solicitudId: solicitud.id,
         tipoMuestra: tipoMuestra.trim(),
-        sitioAnatomico: opcional(sitio),
+        ...(asistida ? { sitioAnatomicoId: sitioId ?? undefined } : { sitioAnatomico: opcional(sitio) }),
         fechaToma: new Date(fechaToma).toISOString(),
         examenIds: elegidos,
       });
@@ -194,6 +227,8 @@ export function MuestraFormModal({
   }
 
   const puedeGuardar =
+    !catalogo.cargando && !catalogo.error &&
+    (!asistida || orden?.id === solicitud?.id) &&
     solicitud !== null &&
     tipoMuestra.trim().length >= 2 &&
     elegidos.length > 0 &&
@@ -263,7 +298,7 @@ export function MuestraFormModal({
               <Button
                 tamano="sm"
                 variante="fantasma"
-                onClick={() => setSolicitud(null)}
+                onClick={() => { setSolicitud(null); setOrden(null); setElegidos([]); setSitioId(null); setTipoMuestra(''); setSitio(''); }}
               >
                 Cambiar
               </Button>
@@ -272,10 +307,11 @@ export function MuestraFormModal({
             <div className="space-y-3">
               <div className="flex flex-wrap items-end gap-3">
                 <Campo
-                  etiqueta="Cédula del paciente"
+                  etiqueta="Identificación del paciente"
                   className="min-w-[220px] flex-1"
                 >
                   <Input
+                    placeholder="Identificación, nombre o código de solicitud"
                     value={cedula}
                     onChange={(e) =>
                       setCedula(e.target.value)
@@ -314,7 +350,7 @@ export function MuestraFormModal({
               {encontradas &&
                 encontradas.length === 0 && (
                   <Alert tipo="aviso">
-                    No hay solicitudes para esa cédula.
+                    No hay solicitudes para esa búsqueda.
                     Cree una desde «Admisión de
                     pacientes».
                   </Alert>
@@ -330,15 +366,16 @@ export function MuestraFormModal({
                       >
                         <button
                           type="button"
-                          onClick={() =>
+                          onClick={() => {
                             setSolicitud({
                               id: s.id,
                               codigo: s.codigo,
                               paciente: nombrePaciente(
                                 s.paciente,
                               ),
-                            })
-                          }
+                            });
+                            setOrden(null); setElegidos([]); setTipoMuestra(''); setSitioId(null); setSitio('');
+                          }}
                           className="flex w-full flex-wrap items-center justify-between gap-2 px-4 py-3 text-left transition-colors hover:bg-accent-soft"
                         >
                           <span className="min-w-0 text-sm text-heading">
@@ -374,20 +411,31 @@ export function MuestraFormModal({
           <legend className={ESTILO_TITULO}>
             Muestra
           </legend>
+          {asistida && !!orden?.examenesSolicitados?.length && <Campo etiqueta="Grupo de la orden" className="md:col-span-3">
+            <Combobox aria-label="Grupo de la orden" value={`${tipoMuestra}|${sitioId ?? ''}`}
+              options={Array.from(new Map(orden.examenesSolicitados.map(l => [`${l.tipoMuestra}|${l.sitioAnatomicoId ?? ''}`,{
+                value: `${l.tipoMuestra}|${l.sitioAnatomicoId ?? ''}`, label: `${l.tipoMuestra}${l.sitioAnatomico ? ` · ${l.sitioAnatomico}` : ''}`,
+              }])).values())}
+              onValueChange={v => { const l = orden.examenesSolicitados?.find(l => `${l.tipoMuestra}|${l.sitioAnatomicoId ?? ''}` === v); if (l) elegirGrupo(orden,l); }} />
+          </Campo>}
 
           <Campo etiqueta="Tipo de muestra">
-            <Combobox value={tipoMuestra} onValueChange={setTipoMuestra} aria-label="Tipo de muestra"
-              options={TIPOS_FRECUENTES.map((t) => ({ value: t, label: t }))} allowFreeText required />
+            <Combobox value={tipoMuestra} onValueChange={t => { setTipoMuestra(t); setSitioId(null); }} aria-label="Tipo de muestra"
+              options={(asistida ? catalogo.datos!.tiposMuestra : TIPOS_FRECUENTES).map((t) => ({ value: t, label: t }))}
+              allowFreeText={!asistida} disabled={asistida && !!orden?.examenesSolicitados?.length} required />
           </Campo>
 
-          <Campo etiqueta="Sitio anatómico">
+          {asistida ? <SitioSelector value={sitioId} onChange={setSitioId} tipoMuestra={tipoMuestra}
+            sitios={catalogo.datos!.sitios} puedeCrear={puede('usuarios.administrar')} onCreado={catalogo.recargar}
+            permitidos={examenes.datos?.filter(e => elegidos.includes(e.id)).flatMap(e => e.sitiosPermitidos ?? [])}
+            disabled={!!orden?.examenesSolicitados?.length} /> : <Campo etiqueta="Sitio anatómico">
             <Input
               value={sitio}
               onChange={(e) =>
                 setSitio(e.target.value)
               }
             />
-          </Campo>
+          </Campo>}
 
           <Campo etiqueta="Fecha y hora de toma">
             <DateTimePicker value={fechaToma} onValueChange={setFechaToma} max={ahoraParaInput()} required />
@@ -409,9 +457,10 @@ export function MuestraFormModal({
               Cargando catálogo de exámenes
             </p>
           )}
+          <Campo etiqueta="Buscar examen"><Input type="search" value={buscarExamen} onChange={e => setBuscarExamen(e.target.value)} /></Campo>
 
           <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-            {examenes.datos?.map((examen) => {
+            {examenes.datos?.filter(e => normalizarBusqueda(`${e.nombre} ${e.codigo}`).includes(normalizarBusqueda(buscarExamen))).map((examen) => {
               const seleccionado =
                 elegidos.includes(examen.id);
 
@@ -426,6 +475,7 @@ export function MuestraFormModal({
                 >
                   <input
                     type="checkbox"
+                    disabled={asistida && !!orden?.examenesSolicitados?.length}
                     checked={seleccionado}
                     onChange={() =>
                       alternarExamen(
@@ -450,6 +500,10 @@ export function MuestraFormModal({
             })}
           </div>
         </fieldset>
+        {asistida && elegidos.map(id => {
+          const e = orden?.examenesSolicitados?.find(l => l.examenId === id) ?? examenes.datos?.find(e => e.id === id);
+          return e?.instruccionesToma ? <p key={id} className="text-sm text-muted">Instrucciones del catálogo: {e.instruccionesToma}</p> : null;
+        })}
       </form>
     </Modal>
   );
