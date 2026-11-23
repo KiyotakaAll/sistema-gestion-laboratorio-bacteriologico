@@ -2,8 +2,8 @@
  * Tipos que reflejan las respuestas del backend. Las fechas llegan como string
  * ISO (JSON no tiene tipo Date) y los DECIMAL de MySQL como string.
  */
-export const ROLES = ['ADMINISTRADOR', 'RECEPCIONISTA', 'BACTERIOLOGO', 'VALIDADOR'] as const;
-export type RolNombre = (typeof ROLES)[number];
+export { ROLES, type RolNombre } from '../../../backend/src/domain/permisos';
+import type { Autorizacion, RolNombre } from '../../../backend/src/domain/permisos';
 
 export type Sexo = 'M' | 'F' | 'O';
 export type Prioridad = 'RUTINA' | 'URGENTE';
@@ -17,6 +17,7 @@ export interface UsuarioSesion {
   email?: string;
   nombreCompleto: string;
   rol: RolNombre;
+  autorizacion?: Autorizacion;
 }
 
 export interface UsuarioResumen {

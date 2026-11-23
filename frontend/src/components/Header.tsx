@@ -1,7 +1,7 @@
 import { Menu, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { ETIQUETA_ROL, NAVEGACION } from './navigation';
+import { etiquetaPerfil, NAVEGACION } from './navigation';
 
 interface Props {
   esMovil: boolean;
@@ -30,7 +30,7 @@ export function Header({ esMovil, menuExpandido, onAlternarMenu }: Props) {
         <div className="lz-header-identity">
           <p>{usuario.nombreCompleto}</p>
         </div>
-        <span className="lz-header-role">{ETIQUETA_ROL[usuario.rol]}</span>
+        <span className="lz-header-role">{etiquetaPerfil(usuario)}</span>
         <span className="lz-avatar" aria-hidden>{usuario.nombreCompleto.trim().split(/\s+/).slice(0, 2).map((parte) => parte[0]).join('').toUpperCase()}</span>
       </div>}
     </header>

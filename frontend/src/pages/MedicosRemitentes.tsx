@@ -25,8 +25,8 @@ export default function MedicosRemitentes() {
 }
 
 function Directorio() {
-  const { tieneRol } = useAuth();
-  const escribir = tieneRol('ADMINISTRADOR', 'RECEPCIONISTA');
+  const { puede } = useAuth();
+  const escribir = puede('medicos.escribir');
   const [busqueda, setBusqueda] = useState('');
   const q = useDebounce(busqueda.trim(), 300);
   const [estado, setEstado] = useState<EstadoMedicos>('todos');

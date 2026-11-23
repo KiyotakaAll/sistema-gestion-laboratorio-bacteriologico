@@ -1,3 +1,4 @@
+import { puedeRol } from './permisos.service';
 import { seleccionSolicitudBase } from './medicos-disponibilidad';
 import { seleccionPaciente, seleccionPacienteResumen, filtroDocumento } from './identificacion-paciente';
 import { randomInt } from 'node:crypto';
@@ -27,7 +28,7 @@ const muestraListaInclude = () => ({
 
 /** Solo los roles clínicos autorizados consultan la relación de resultados. */
 async function muestraDetalleInclude(rol: RolNombre, cliente: TxClient = prisma) {
-  const puedeVerResultados = ['BACTERIOLOGO', 'VALIDADOR', 'ADMINISTRADOR'].includes(rol);
+  const puedeVerResultados = puedeRol(rol, 'resultados.leer');
   return {
     solicitud: { select: { ...await seleccionSolicitudBase(cliente), paciente: { select: seleccionPaciente() } } },
     recepcionadoPor: { select: { id: true, username: true, nombreCompleto: true } },

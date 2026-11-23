@@ -26,13 +26,16 @@ type SolicitudFila = PacienteDetalle['solicitudes'][number];
 interface Props {
   pacienteId: number;
   puedeEscribir: boolean;
+  puedeSolicitudes?: boolean;
+  puedeRegistrarMuestras?: boolean;
   onCerrar: () => void;
   /** Se invoca cuando cambian datos que afectan al listado de fondo. */
   onCambio: () => void;
 }
 
 /** Modal Master-Detail: datos del paciente (maestro) y sus solicitudes (detalle). */
-export function PacienteDetalleModal({ pacienteId, puedeEscribir, onCerrar, onCambio }: Props) {
+export function PacienteDetalleModal({ pacienteId, puedeEscribir, puedeSolicitudes = puedeEscribir,
+  puedeRegistrarMuestras = puedeEscribir, onCerrar, onCambio }: Props) {
   const navigate = useNavigate();
   const toast = useToast();
   const { datos: paciente, cargando, error, recargar } = useCarga(() => pacientesApi.obtener(pacienteId), [pacienteId]);
@@ -59,15 +62,15 @@ export function PacienteDetalleModal({ pacienteId, puedeEscribir, onCerrar, onCa
         accessor: () => null,
         align: 'right',
         cell: (s) =>
-          puedeEscribir ? (
-            <div className="flex flex-wrap gap-2">{directorioMedicos && <Button tamano="sm" onClick={() => setRemitenteSolicitud(s.id)} aria-label={`Editar remitente de ${s.codigo}`}>Remitente</Button>}
-            <Button tamano="sm" variante="fantasma" icono={<IconoMuestras className="h-3.5 w-3.5" aria-hidden />} onClick={() => navigate(`/recepcion?solicitudId=${s.id}`)}>
+          puedeSolicitudes || puedeRegistrarMuestras ? (
+            <div className="flex flex-wrap gap-2">{puedeSolicitudes && directorioMedicos && <Button tamano="sm" onClick={() => setRemitenteSolicitud(s.id)} aria-label={`Editar remitente de ${s.codigo}`}>Remitente</Button>}
+            {puedeRegistrarMuestras && <Button tamano="sm" variante="fantasma" icono={<IconoMuestras className="h-3.5 w-3.5" aria-hidden />} onClick={() => navigate(`/recepcion?solicitudId=${s.id}`)}>
               Registrar muestra
-            </Button></div>
+            </Button>}</div>
           ) : null,
       },
     ],
-    [puedeEscribir, navigate, directorioMedicos],
+    [puedeSolicitudes, puedeRegistrarMuestras, navigate, directorioMedicos],
   );
 
   return (
@@ -110,7 +113,7 @@ export function PacienteDetalleModal({ pacienteId, puedeEscribir, onCerrar, onCa
             <Seccion
               titulo="Solicitudes médicas"
               acciones={
-                puedeEscribir && !nuevaSolicitud ? (
+                puedeSolicitudes && !nuevaSolicitud ? (
                   <Button tamano="sm" variante="primario" icono={<IconoSolicitudes className="h-3.5 w-3.5" aria-hidden />} onClick={() => setNuevaSolicitud(true)}>
                     Nueva solicitud
                   </Button>

@@ -401,7 +401,7 @@ describe('Validación con doble firma', () => {
     entrar('/validacion', 'ADMINISTRADOR', 1);
     const u = userEvent.setup();
     await u.click(await screen.findByText('Pérez, Ana'));
-    expect(await screen.findByText(/solo un validador puede firmarlo/)).toBeInTheDocument();
+    expect(await screen.findByText(/Su perfil permite consultar este resultado, pero no autoriza su firma/)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Validar resultado/ })).not.toBeInTheDocument();
   });
 });

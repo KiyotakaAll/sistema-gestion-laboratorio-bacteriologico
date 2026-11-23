@@ -45,7 +45,7 @@ function motivoDelEvento(evento: EventoTrazabilidad): string | null {
 
 /** Modal Master-Detail de una muestra: datos, exámenes, trazabilidad y acciones según rol y estado. */
 export function MuestraDetalleModal({ muestraId, onCerrar, onCambio }: Props) {
-  const { tieneRol } = useAuth();
+  const { puede } = useAuth();
   const toast = useToast();
   const muestra = useCarga(() => muestrasApi.obtener(muestraId), [muestraId]);
   const trazabilidad = useCarga(() => muestrasApi.trazabilidad(muestraId), [muestraId]);
@@ -56,7 +56,7 @@ export function MuestraDetalleModal({ muestraId, onCerrar, onCambio }: Props) {
   const [motivo, setMotivo] = useState('');
 
   const m = muestra.datos;
-  const puedeVerResultados = tieneRol('BACTERIOLOGO', 'VALIDADOR', 'ADMINISTRADOR');
+  const puedeVerResultados = puede('resultados.leer');
 
   const columnasExamenes = useMemo<Column<ExamenFila>[]>(
     () => {
@@ -98,9 +98,9 @@ export function MuestraDetalleModal({ muestraId, onCerrar, onCambio }: Props) {
     }
   }
 
-  const puedeReceptar = m?.estado === 'REGISTRADA' && tieneRol('ADMINISTRADOR', 'RECEPCIONISTA');
-  const puedeProcesar = m?.estado === 'RECEPTADA' && tieneRol('BACTERIOLOGO');
-  const puedeRechazar = (m?.estado === 'REGISTRADA' || m?.estado === 'RECEPTADA') && tieneRol('ADMINISTRADOR', 'RECEPCIONISTA', 'BACTERIOLOGO');
+  const puedeReceptar = m?.estado === 'REGISTRADA' && puede('muestras.receptar');
+  const puedeProcesar = m?.estado === 'RECEPTADA' && puede('muestras.procesar');
+  const puedeRechazar = (m?.estado === 'REGISTRADA' || m?.estado === 'RECEPTADA') && puede('muestras.rechazar');
 
   return (
     <Modal

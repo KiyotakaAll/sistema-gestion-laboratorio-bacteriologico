@@ -2,7 +2,8 @@
 import { Microscope } from 'lucide-react';
 import { IconoPanelGeneral, IconoPacientes, IconoRecepcionMuestras, IconoWorklist, IconoValidacion, IconoUsuarios, IconoConfiguracion, type LabZenIconComponent } from './icons/LabZenIcon';
 
-import type { RolNombre } from '../types/api';
+import type { RolNombre, UsuarioSesion } from '../types/api';
+import type { Permiso } from '../utils/permisos';
 
 export interface ItemNavegacion {
   ruta: string;
@@ -10,16 +11,9 @@ export interface ItemNavegacion {
   /** Título mostrado en la cabecera. */
   titulo: string;
   icono: LabZenIconComponent;
-  /** Roles con acceso. Se aplica igual al menú y a la protección de la ruta. */
-  roles: RolNombre[];
+  /** Misma capacidad para el menú y el acceso directo a la ruta. */
+  permiso: Permiso;
 }
-
-const TODOS: RolNombre[] = [
-  'ADMINISTRADOR',
-  'RECEPCIONISTA',
-  'BACTERIOLOGO',
-  'VALIDADOR',
-];
 
 export const NAVEGACION: ItemNavegacion[] = [
   {
@@ -27,64 +21,65 @@ export const NAVEGACION: ItemNavegacion[] = [
     etiqueta: 'Panel general',
     titulo: 'Panel general',
     icono: IconoPanelGeneral,
-    roles: TODOS,
+    permiso: 'panel.ver',
   },
   {
     ruta: '/admision',
     etiqueta: 'Admisión de pacientes',
     titulo: 'Admisión de pacientes y solicitudes',
     icono: IconoPacientes,
-    roles: ['ADMINISTRADOR', 'RECEPCIONISTA'],
+    permiso: 'admision.acceder',
   },
   {
     ruta: '/medicos',
     etiqueta: 'Médicos remitentes',
     titulo: 'Directorio de médicos remitentes',
     icono: IconoUsuarios,
-    roles: TODOS,
+    permiso: 'medicos.leer',
   },
   {
     ruta: '/recepcion',
     etiqueta: 'Recepción de muestras',
     titulo: 'Control y trazabilidad de muestras',
     icono: IconoRecepcionMuestras,
-    roles: ['ADMINISTRADOR', 'RECEPCIONISTA', 'BACTERIOLOGO'],
+    permiso: 'recepcion.acceder',
   },
   {
     ruta: '/worklist',
     etiqueta: 'Worklist bacteriológico',
     titulo: 'Worklist bacteriológico',
     icono: IconoWorklist,
-    roles: ['ADMINISTRADOR', 'BACTERIOLOGO'],
+    permiso: 'resultados.worklist',
   },
   {
     ruta: '/validacion',
     etiqueta: 'Consulta y validación',
     titulo: 'Consulta y validación de resultados',
     icono: IconoValidacion,
-    roles: ['ADMINISTRADOR', 'BACTERIOLOGO', 'VALIDADOR'],
+    permiso: 'resultados.leer',
   },
   {
     ruta: '/usuarios',
     etiqueta: 'Gestión de usuarios',
     titulo: 'Gestión de usuarios',
     icono: IconoUsuarios,
-    roles: ['ADMINISTRADOR'],
+    permiso: 'usuarios.administrar',
   },
   {
     ruta: '/configuracion',
     etiqueta: 'Configuración',
     titulo: 'Configuración y preferencias',
     icono: IconoConfiguracion,
-    roles: TODOS,
+    permiso: 'configuracion.ver',
 },
 ];
 
-export function rolesDeRuta(ruta: string): RolNombre[] {
-  return NAVEGACION.find((item) => item.ruta === ruta)?.roles ?? [];
+export function permisoDeRuta(ruta: string): Permiso | undefined {
+  return NAVEGACION.find((item) => item.ruta === ruta)?.permiso;
 }
 
 export const ETIQUETA_ROL: Record<RolNombre, string> = {
+  AUXILIAR: 'Auxiliar',
   ADMINISTRADOR: 'Administrador',
   RECEPCIONISTA: 'Recepción',
   BACTERIOLOGO: 'Bacteriólogo',
@@ -92,3 +87,7 @@ export const ETIQUETA_ROL: Record<RolNombre, string> = {
 };
 
 export const ICONO_LABORATORIO = Microscope;
+
+export function etiquetaPerfil(usuario: UsuarioSesion): string {
+  return ETIQUETA_ROL[usuario.autorizacion?.perfilOperativo ?? usuario.rol];
+}

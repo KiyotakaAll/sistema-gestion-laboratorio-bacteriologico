@@ -28,10 +28,10 @@ const claseFiltro =
   'ui-control h-11 w-full rounded-lg border border-line bg-surface px-3 text-sm text-heading placeholder:text-muted';
 
 export default function RecepcionMuestras() {
-  const { tieneRol } = useAuth();
+  const { puede } = useAuth();
   const toast = useToast();
   const [params, setParams] = useSearchParams();
-  const puedeRegistrar = tieneRol('ADMINISTRADOR', 'RECEPCIONISTA');
+  const puedeRegistrar = puede('muestras.registrar');
 
   // Los parámetros de URL (desde el panel o la admisión) solo inicializan el estado.
   const [estado, setEstado] = useState<EstadoMuestra | ''>(() => {

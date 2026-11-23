@@ -16,7 +16,7 @@ import { ResultadoLectura } from './ResultadoLectura';
 interface Props {
   resultado: ResultadoDetalle;
   usuarioActualId: number;
-  /** Solo el rol VALIDADOR puede firmar; el administrador solo consulta. */
+  /** Capacidad recibida de la política vigente; nunca incluye un bypass administrativo. */
   puedeValidar: boolean;
   onCerrar: () => void;
   onValidado: (resultado: ResultadoDetalle) => void;
@@ -106,7 +106,7 @@ export function ResultadoRevisionModal({ resultado: inicial, usuarioActualId, pu
         )}
         {!validado && !puedeValidar && (
           <div className="mt-3">
-            <Alert tipo="info">Su rol puede consultar este resultado, pero solo un validador puede firmarlo.</Alert>
+            <Alert tipo="info">Su perfil permite consultar este resultado, pero no autoriza su firma.</Alert>
           </div>
         )}
 

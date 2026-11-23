@@ -1,3 +1,5 @@
+import { puedeRol } from './permisos.service';
+import { esCuentaAdministrativa } from '../domain/permisos';
 import type { Prisma } from '@prisma/client';
 import { prisma } from '../config/prisma';
 import type { AuditContext, TxClient } from '../types/dto';
@@ -16,7 +18,7 @@ async function exigirAdministradorVigente(tx: TxClient, id: number): Promise<voi
     where: { id }, select: { activo: true, rol: { select: { nombre: true } } },
   });
   if (!administrador?.activo) throw new AppError(401, 'La sesión ya no es válida.', 'SESION_INVALIDA');
-  if (administrador.rol.nombre !== 'ADMINISTRADOR')
+  if (!puedeRol(administrador.rol.nombre, 'usuarios.administrar'))
     throw new AppError(403, 'No tiene permisos para administrar usuarios.', 'ACCESO_DENEGADO');
 }
 
@@ -59,7 +61,7 @@ export function activarUsuario(id: number, ctx: AuditContext) {
       where: { id }, select: { id: true, activo: true, rolId: true, rol: { select: { nombre: true } } },
     });
     if (!usuario) throw new AppError(404, 'El usuario no existe.', 'USUARIO_NO_ENCONTRADO');
-    if (usuario.rol.nombre === 'ADMINISTRADOR')
+    if (esCuentaAdministrativa(usuario.rol.nombre))
       throw new AppError(403, 'Esta acción no permite activar cuentas administrativas.', 'ACTIVACION_RESTRINGIDA');
     if (usuario.activo) throw new AppError(409, 'El usuario ya está activo. Actualice la lista.', 'USUARIO_YA_ACTIVO');
     const cambio = await tx.usuario.updateMany({

@@ -9,6 +9,8 @@ datasource db {
 
 model Rol {
   id          Int       @id @default(autoincrement()) @db.UnsignedInt
+  // String deliberado: catálogo histórico + AUXILIAR, controlado por CHECK SQL y política.
+  // No convertir usuarios ni añadir permisos administrativos implícitos al perfil clínico.
   nombre      String    @unique(map: "uq_roles_nombre") @db.VarChar(30)
   descripcion String    @db.VarChar(150)
   usuarios    Usuario[]

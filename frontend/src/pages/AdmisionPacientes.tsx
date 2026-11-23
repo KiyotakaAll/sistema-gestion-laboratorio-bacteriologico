@@ -15,8 +15,8 @@ import { SEXO_ETIQUETA, formatEdad, formatFecha, limpiarParams, nombrePaciente }
 import { identificacionTexto } from '../utils/identificacion';
 
 export default function AdmisionPacientes() {
-  const { tieneRol } = useAuth();
-  const puedeEscribir = tieneRol('ADMINISTRADOR', 'RECEPCIONISTA');
+  const { puede } = useAuth();
+  const puedeEscribir = puede('pacientes.escribir');
   const { datos: capacidades, cargando: cargandoCapacidades, error: errorCapacidades } = useCarga(() => pacientesApi.capacidades(), []);
   const identificacionHabilitada = capacidades?.identificacionPacientes === true;
 
@@ -100,7 +100,9 @@ export default function AdmisionPacientes() {
       )}
 
       {detalleId !== null && (
-        <PacienteDetalleModal pacienteId={detalleId} puedeEscribir={puedeEscribir} onCerrar={() => setDetalleId(null)} onCambio={recargar} />
+        <PacienteDetalleModal pacienteId={detalleId} puedeEscribir={puedeEscribir}
+          puedeSolicitudes={puede('solicitudes.escribir')} puedeRegistrarMuestras={puede('muestras.registrar')}
+          onCerrar={() => setDetalleId(null)} onCambio={recargar} />
       )}
     </>
   );

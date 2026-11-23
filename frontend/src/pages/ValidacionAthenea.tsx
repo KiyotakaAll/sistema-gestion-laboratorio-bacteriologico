@@ -14,9 +14,9 @@ import type { EstadoResultado, ResultadoDetalle } from '../types/api';
 import { formatFechaHora, limpiarParams, nombrePaciente } from '../utils/format';
 
 export default function ValidacionAthenea() {
-  const { usuario, tieneRol } = useAuth();
-  const puedeValidar = tieneRol('VALIDADOR');
-  const [estado, setEstado] = useState<EstadoResultado | ''>(() => tieneRol('BACTERIOLOGO') ? '' : 'PENDIENTE_VALIDACION');
+  const { usuario, puede } = useAuth();
+  const puedeValidar = puede('resultados.validar');
+  const [estado, setEstado] = useState<EstadoResultado | ''>(() => puede('resultados.escribir') ? '' : 'PENDIENTE_VALIDACION');
   const [pagina, setPagina] = useState(1);
   const [seleccionado, setSeleccionado] = useState<ResultadoDetalle | null>(null);
 

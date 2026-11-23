@@ -1,3 +1,4 @@
+import { politicaOperativaActiva, puedeRol } from './permisos.service';
 import { seleccionSolicitudBase } from './medicos-disponibilidad';
 import { seleccionPaciente } from './identificacion-paciente';
 import { EstadoMuestra, EstadoResultado, Prisma } from '@prisma/client';
@@ -233,6 +234,13 @@ export async function actualizarResultado(id: number, input: ActualizarResultado
  */
 export async function validarResultado(id: number, ctx: AuditContext) {
   return prisma.$transaction(async (tx) => {
+    if (politicaOperativaActiva()) {
+      const firmante = await tx.usuario.findUnique({ where: { id: ctx.usuarioId },
+        select: { activo: true, rol: { select: { nombre: true } } } });
+      if (!firmante?.activo || !puedeRol(firmante.rol.nombre, 'resultados.validar'))
+        throw new AppError(403, 'La validación final requiere un bacteriólogo vigente.', 'FIRMA_PROFESIONAL_REQUERIDA');
+    }
+
     const actual = await tx.resultado.findUnique({
       where: { id },
       select: { estado: true, usuarioIdRegistra: true, muestraExamen: { select: { muestraId: true } } },

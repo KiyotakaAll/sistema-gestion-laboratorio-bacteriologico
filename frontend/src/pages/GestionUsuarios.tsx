@@ -1,3 +1,4 @@
+import { esCuentaAdministrativa } from '../utils/permisos';
 import { PageHeader } from '../components/UI/PageHeader';
 import { RefreshCw, UserCheck } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -43,7 +44,7 @@ export default function GestionUsuarios() {
     { id: 'acciones', header: 'Acciones', accessor: () => '', sortable: false,
       cell: (u) => u.id === usuario?.id ? <span className="text-xs text-muted">Su cuenta</span>
         : u.activo ? <span className="text-xs text-muted">Sin acciones pendientes</span>
-          : u.rol === 'ADMINISTRADOR' ? <span className="text-xs text-muted">Activación restringida</span>
+          : esCuentaAdministrativa(u.rol) ? <span className="text-xs text-muted">Activación restringida</span>
             : <Button tamano="sm" disabled={activando || cargando} icono={<UserCheck size={16} aria-hidden />}
               aria-label={`Activar usuario: ${u.nombreCompleto}`} onClick={() => {
                 setSeleccionado(u); setErrorActivacion(null); setExito('');

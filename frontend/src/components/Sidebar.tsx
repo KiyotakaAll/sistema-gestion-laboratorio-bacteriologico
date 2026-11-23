@@ -3,7 +3,7 @@ import { useId, useState, type FocusEvent, type MouseEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { ETIQUETA_ROL, NAVEGACION } from './navigation';
+import { etiquetaPerfil, NAVEGACION } from './navigation';
 import { LabZenBrand } from './branding/LabZenBrand';
 
 interface Props {
@@ -13,8 +13,8 @@ interface Props {
 }
 
 export function Sidebar({ id, contraido, onNavegar }: Props) {
-  const { usuario, tieneRol, cerrarSesion } = useAuth();
-  const items = NAVEGACION.filter((item) => item.ruta !== '/configuracion' && tieneRol(...item.roles));
+  const { usuario, puede, cerrarSesion } = useAuth();
+  const items = NAVEGACION.filter((item) => item.ruta !== '/configuracion' && puede(item.permiso));
   const idAyuda = useId();
   const [ayuda, setAyuda] = useState<{ etiqueta: string; top: number; left: number } | null>(null);
 
@@ -59,15 +59,15 @@ export function Sidebar({ id, contraido, onNavegar }: Props) {
         </ul>
       </nav>
       <div className="lz-sidebar-footer">
-        <div className="lz-sidebar-role" title={usuario ? ETIQUETA_ROL[usuario.rol] : undefined}>
+        <div className="lz-sidebar-role" title={usuario ? etiquetaPerfil(usuario) : undefined}>
           <span className="lz-sidebar-avatar" aria-hidden>{usuario?.nombreCompleto.trim().split(/\s+/).slice(0, 2).map(p => p[0]).join('').toUpperCase() ?? 'LZ'}</span>
-          <div className="lz-sidebar-label"><strong>{usuario?.nombreCompleto ?? 'Usuario'}</strong><span>{usuario ? ETIQUETA_ROL[usuario.rol] : 'Perfil de acceso'}</span></div>
+          <div className="lz-sidebar-label"><strong>{usuario?.nombreCompleto ?? 'Usuario'}</strong><span>{usuario ? etiquetaPerfil(usuario) : 'Perfil de acceso'}</span></div>
         </div>
         <div className="lz-sidebar-actions" role="group" aria-label="Cuenta y preferencias">
-          <NavLink to="/configuracion" aria-label="Configuración" title="Configuración" onClick={navegar}
+          {puede('configuracion.ver') && <NavLink to="/configuracion" aria-label="Configuración" title="Configuración" onClick={navegar}
             className={({ isActive }) => `lz-sidebar-action${isActive ? ' lz-nav-active' : ''}`}>
             <IconoConfiguracion size={19} strokeWidth={1.7} aria-hidden /><span className="lz-sidebar-label">Configuración</span>
-          </NavLink>
+          </NavLink>}
           <button type="button" aria-label="Cerrar sesión" title="Cerrar sesión" className="lz-sidebar-action" onClick={cerrarSesion}>
             <IconoCerrarSesion size={19} strokeWidth={1.7} aria-hidden /><span className="lz-sidebar-label">Cerrar sesión</span>
           </button>
