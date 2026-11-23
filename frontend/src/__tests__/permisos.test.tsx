@@ -15,7 +15,7 @@ vi.mock('../services/laboratorio', () => ({
   authApi: { perfil: vi.fn(), login: vi.fn() },
   pacientesApi: { listar: vi.fn(), capacidades: vi.fn(), obtener: vi.fn() },
   resultadosApi: { listar: vi.fn(), worklist: vi.fn(), validar: vi.fn() },
-  muestrasApi: { listar: vi.fn() }, usuariosApi: { listar: vi.fn(), activar: vi.fn() },
+  muestrasApi: { listar: vi.fn() }, usuariosApi: { listar: vi.fn(), activar: vi.fn(), capacidades: vi.fn(), crear: vi.fn() },
 }));
 vi.mock('../services/medicos', () => ({ medicosApi: { capacidades: vi.fn(async () => ({ directorioMedicos: false })) } }));
 const fecha='2026-01-01T13:00:00Z';
@@ -39,6 +39,7 @@ beforeEach(()=>{
   vi.mocked(resultadosApi.validar).mockResolvedValue({...resultado,estado:'VALIDADO'});
   vi.mocked(muestrasApi.listar).mockResolvedValue(pagina([]));
   vi.mocked(usuariosApi.listar).mockResolvedValue(pagina([]));
+  vi.mocked(usuariosApi.capacidades).mockResolvedValue({ roles: ['BACTERIOLOGO'] });
 });
 function abrir(ruta:string,usuario:UsuarioSesion){
   localStorage.setItem('lab_token','token-ficticio');vi.mocked(authApi.perfil).mockResolvedValue(usuario);

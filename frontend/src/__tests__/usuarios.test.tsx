@@ -9,7 +9,7 @@ import type { RolNombre, UsuarioAdministracion } from '../types/api';
 
 vi.mock('../services/laboratorio', () => ({
   authApi: { perfil: vi.fn(), login: vi.fn() },
-  usuariosApi: { listar: vi.fn(), activar: vi.fn() },
+  usuariosApi: { listar: vi.fn(), activar: vi.fn(), capacidades: vi.fn(), crear: vi.fn() },
 }));
 const admin = { id: 7, username: 'admin', nombreCompleto: 'Administrador Prueba', email: 'admin@example.test', rol: 'ADMINISTRADOR' as const };
 const pendiente: UsuarioAdministracion = { id: 42, username: 'pendiente', nombreCompleto: 'Persona Pendiente', email: 'pendiente@example.test', rol: 'RECEPCIONISTA', activo: false, createdAt: '2026-11-18T12:00:00Z' };
@@ -20,6 +20,7 @@ const errorServidor = { isAxiosError: true, response: { status: 503, data: { err
 beforeEach(() => {
   vi.resetAllMocks();
   vi.mocked(authApi.perfil).mockResolvedValue(admin);
+  vi.mocked(usuariosApi.capacidades).mockResolvedValue({ roles: ['BACTERIOLOGO'] });
   vi.mocked(usuariosApi.listar).mockResolvedValue(pagina());
   vi.mocked(usuariosApi.activar).mockResolvedValue({ id: pendiente.id, activo: true });
 });

@@ -1,6 +1,6 @@
 import { esCuentaAdministrativa } from '../utils/permisos';
 import { PageHeader } from '../components/UI/PageHeader';
-import { RefreshCw, UserCheck } from 'lucide-react';
+import { RefreshCw, UserCheck, UserPlus } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ETIQUETA_ROL } from '../components/navigation';
 import { Alert } from '../components/UI/Alert';
@@ -15,9 +15,13 @@ import { useDebounce } from '../hooks/useDebounce';
 import { mensajeDeError } from '../services/api';
 import { usuariosApi } from '../services/laboratorio';
 import type { UsuarioAdministracion } from '../types/api';
+import { UsuarioFormModal } from '../components/usuarios/UsuarioFormModal';
 
 export default function GestionUsuarios() {
-  const { usuario } = useAuth();
+  const { usuario, puede } = useAuth();
+  const puedeCrear = esCuentaAdministrativa(usuario?.rol ?? '') && puede('usuarios.administrar');
+  const [creando, setCreando] = useState(false);
+  const capacidades = useCarga(() => puedeCrear ? usuariosApi.capacidades() : Promise.resolve({ roles: [] }), [puedeCrear]);
   const [busqueda, setBusqueda] = useState('');
   const [estado, setEstado] = useState<'todos' | 'inactivos' | 'activos'>('todos');
   const [pagina, setPagina] = useState(1);
@@ -77,9 +81,16 @@ export default function GestionUsuarios() {
   return <div className="space-y-4">
     <PageHeader contexto="Acceso institucional" titulo="Cuentas del laboratorio"
       descripcion="Revisa las solicitudes de acceso y gestiona la activación del personal autorizado."
-      acciones={<Button onClick={recargar} disabled={cargando || activando} icono={<RefreshCw size={16} aria-hidden />}>Actualizar lista</Button>} />
+      acciones={<>
+        {puedeCrear && <Button variante="primario" icono={<UserPlus size={16} aria-hidden />}
+          disabled={activando || creando || capacidades.cargando || !!capacidades.error || !capacidades.datos?.roles.length}
+          onClick={() => { setCreando(true); setExito(''); }}>Crear usuario</Button>}
+        <Button onClick={() => { recargar(); capacidades.recargar(); }} disabled={cargando || activando || creando} icono={<RefreshCw size={16} aria-hidden />}>Actualizar lista</Button>
+      </>} />
     <div className="lz-notice"><UserCheck size={20} aria-hidden /><div><strong>Verifica la identidad antes de activar</strong>
-      <p>Las cuentas registradas desde Login quedan inactivas con el rol de recepción. La activación conserva el rol asignado. Esta pantalla no activa cuentas administrativas ni modifica permisos.</p></div></div>
+      <p>Las cuentas nuevas quedan pendientes de activación. El registro público, cuando está habilitado, conserva el rol de recepción. La activación mantiene el rol asignado y no permite activar cuentas administrativas.</p></div></div>
+    {puedeCrear && capacidades.error && <Alert>{capacidades.error}</Alert>}
+    {puedeCrear && capacidades.datos?.roles.length === 0 && <Alert tipo="info">No hay perfiles disponibles para crear cuentas. Actualice la lista para volver a comprobar.</Alert>}
     {exito && <Alert tipo="info">{exito}</Alert>}
     <DataTable titulo="Personal del laboratorio" descripcion="Cuentas existentes y solicitudes pendientes de activación."
       barra={<div className="lz-user-filters">
@@ -111,5 +122,10 @@ export default function GestionUsuarios() {
         {errorActivacion && <Alert>{errorActivacion}</Alert>}
       </div>
     </Modal>
+    {puedeCrear && creando && capacidades.datos && <UsuarioFormModal roles={capacidades.datos.roles}
+      onCerrar={() => setCreando(false)} onCreado={nuevo => {
+        setCreando(false); setExito(`Se creó la cuenta de ${nuevo.nombreCompleto} (${nuevo.username}). Queda pendiente de activación.`);
+        setBusqueda(''); setEstado('todos'); setPagina(1); recargar();
+      }} />}
   </div>;
 }

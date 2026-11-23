@@ -1,6 +1,15 @@
 import * as usuarioService from '../services/usuario.service';
 import { asyncHandler, auditContext } from '../utils/http';
-import { activarUsuarioSchema, listarUsuariosSchema, usuarioIdSchema } from '../validators/usuario.validator';
+import { activarUsuarioSchema, crearUsuarioSchema, listarUsuariosSchema, usuarioIdSchema } from '../validators/usuario.validator';
+
+export const capacidades = asyncHandler(async (req, res) => {
+  res.json({ data: await usuarioService.capacidadesAltaUsuarios(auditContext(req).usuarioId) });
+});
+
+export const crear = asyncHandler(async (req, res) => {
+  const input = crearUsuarioSchema.parse(req.body);
+  res.status(201).json({ data: await usuarioService.crearUsuario(input, auditContext(req)) });
+});
 
 export const listar = asyncHandler(async (req, res) => {
   const filtros = listarUsuariosSchema.parse(req.query);

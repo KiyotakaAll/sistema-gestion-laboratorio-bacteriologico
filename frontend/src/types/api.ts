@@ -3,7 +3,8 @@
  * ISO (JSON no tiene tipo Date) y los DECIMAL de MySQL como string.
  */
 export { ROLES, type RolNombre } from '../../../backend/src/domain/permisos';
-import type { Autorizacion, RolNombre } from '../../../backend/src/domain/permisos';
+import type { Autorizacion, PerfilOperativo, RolNombre } from '../../../backend/src/domain/permisos';
+export type { PerfilOperativo } from '../../../backend/src/domain/permisos';
 
 export type Sexo = 'M' | 'F' | 'O';
 export type Prioridad = 'RUTINA' | 'URGENTE';
@@ -30,6 +31,15 @@ export interface UsuarioAdministracion extends UsuarioSesion {
   email: string;
   activo: boolean;
   createdAt: string;
+}
+
+export interface NuevoUsuarioAdministrativo {
+  nombreCompleto: string;
+  username: string;
+  email: string;
+  password: string;
+  confirmacion: string;
+  rol: PerfilOperativo;
 }
 
 export interface SesionIniciada {

@@ -13,6 +13,8 @@ import type {
   NuevaSolicitud,
   NuevoPaciente,
   NuevoResultado,
+  NuevoUsuarioAdministrativo,
+  PerfilOperativo,
   Paciente,
   PacienteDetalle,
   Paginado,
@@ -45,6 +47,9 @@ export const authApi = {
 };
 
 export const usuariosApi = {
+  capacidades: () => api.get<{ data: { roles: PerfilOperativo[] } }>('/usuarios/capacidades').then(datos),
+  crear: (cuerpo: NuevoUsuarioAdministrativo) =>
+    api.post<{ data: UsuarioAdministracion }>('/usuarios', cuerpo).then(datos),
   listar: (params: Paginacion & { q?: string; estado?: 'todos' | 'inactivos' | 'activos' }) =>
     api.get<Paginado<UsuarioAdministracion>>('/usuarios', { params }).then(pagina),
   activar: (id: number) =>

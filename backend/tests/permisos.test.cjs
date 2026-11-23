@@ -44,7 +44,7 @@ for (const [modulo,nombres] of Object.entries({
   orden:['listar','obtener','crear','examenes','actualizarRemitente'],
   medico:['capacidades','listar','obtener','crear','actualizar','estado'],
   muestra:['listar','obtenerPorCodigoBarras','obtener','trazabilidad','registrar','receptar','procesar','rechazar'],
-  usuario:['listar','activar'],
+  usuario:['listar','activar','capacidades','crear'],
 })) sustituir('../src/controllers/'+modulo+'.controller.ts',Object.fromEntries(nombres.map(n=>[n,centinela])));
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
@@ -94,6 +94,7 @@ const rutas=[
   ['resultado','POST','/','resultados.escribir'],['resultado','PUT','/20','resultados.escribir'],
   ['resultado','PATCH','/20/validar','resultados.validar'],
   ['usuario','GET','/','usuarios.administrar'],['usuario','PATCH','/42/activar','usuarios.administrar'],
+  ['usuario','GET','/capacidades','usuarios.administrar'],['usuario','POST','/','usuarios.administrar'],
 ];
 // Matriz esperada independiente de la función de política bajo prueba.
 const esperados={

@@ -8,7 +8,8 @@ export const loginSchema = z.object({
 
 export type LoginInput = z.infer<typeof loginSchema>;
 
-export const registroSchema = z.object({
+/** Campos compartidos por registro histórico y alta administrativa; mismas reglas de contraseña. */
+export const camposRegistroSchema = z.object({
   nombreCompleto: z.string().trim().min(3, 'Ingrese su nombre completo').max(120),
   email: z.string().trim().toLowerCase().email('Ingrese un correo válido').max(120),
   password: z.string().min(12, 'Use al menos 12 caracteres')
@@ -16,7 +17,9 @@ export const registroSchema = z.object({
     .regex(/[0-9]/, 'Incluya un número').regex(/[^A-Za-z0-9\s]/, 'Incluya un símbolo')
     .refine((v) => Buffer.byteLength(v, 'utf8') <= 72, 'Use como máximo 72 bytes'),
   confirmacion: z.string(),
-}).strict().refine((v) => v.password === v.confirmacion, {
+}).strict();
+
+export const registroSchema = camposRegistroSchema.refine((v) => v.password === v.confirmacion, {
   message: 'Las contraseñas no coinciden', path: ['confirmacion'],
 });
 
