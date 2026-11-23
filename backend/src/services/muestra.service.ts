@@ -1,8 +1,11 @@
+import { TRANSICIONES_MUESTRA, permiteTransicionMuestra, type AccionMuestra } from '../domain/flujo-clinico';
+import { bloquearMuestra, exigirPermisoClinico, transaccionClinica } from './flujo-clinico.service';
+import type { Permiso } from '../domain/permisos';
 import { puedeRol } from './permisos.service';
 import { seleccionSolicitudBase } from './medicos-disponibilidad';
 import { seleccionPaciente, seleccionPacienteResumen, filtroDocumento } from './identificacion-paciente';
 import { randomInt } from 'node:crypto';
-import { EstadoMuestra, Prisma } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 import { prisma } from '../config/prisma';
 import type { RolNombre } from '../types/auth';
 import type { AuditContext, EventoTrazabilidad, Paginado, TxClient } from '../types/dto';
@@ -67,7 +70,8 @@ function generarCodigoBarras(): string {
 }
 
 export async function registrarMuestra(input: RegistrarMuestraInput, ctx: AuditContext, rol: RolNombre) {
-  return prisma.$transaction(async (tx) => {
+  return transaccionClinica(async (tx) => {
+    rol = await exigirPermisoClinico(tx, ctx, 'muestras.registrar');
     const solicitud = await tx.solicitud.findUnique({
       where: { id: input.solicitudId },
       select: { id: true },
@@ -186,9 +190,8 @@ export async function obtenerTrazabilidadMuestra(id: number): Promise<EventoTraz
 
 interface Transicion {
   id: number;
-  desde: EstadoMuestra[];
-  hasta: EstadoMuestra;
-  accion: string;
+  accion: AccionMuestra;
+  permiso: Permiso;
   ctx: AuditContext;
   rol: RolNombre;
   /** Campos adicionales a escribir; recibe la fecha de recepción actual por si ya existe. */
@@ -198,13 +201,16 @@ interface Transicion {
 
 /**
  * Cambio de estado atómico y a prueba de concurrencia:
- *  1. Lee el estado actual y valida que la transición sea legal.
+ *  1. Verifica la cuenta vigente, bloquea la muestra y valida la transición.
  *  2. `updateMany` con `estado` en el WHERE: si otro usuario cambió la muestra
  *     entre el paso 1 y el 2, count = 0 y se aborta (bloqueo optimista).
  *  3. Registra la auditoría en la misma transacción.
  */
-async function transicionar({ id, desde, hasta, accion, ctx, rol, datos, detalle }: Transicion) {
-  return prisma.$transaction(async (tx) => {
+async function transicionar({ id, accion, permiso, ctx, rol, datos, detalle }: Transicion) {
+  const { desde, hasta } = TRANSICIONES_MUESTRA[accion];
+  return transaccionClinica(async (tx) => {
+    rol = await exigirPermisoClinico(tx, ctx, permiso);
+    await bloquearMuestra(tx, id);
     const actual = await tx.muestra.findUnique({
       where: { id },
       select: { estado: true, fechaRecepcion: true },
@@ -212,7 +218,7 @@ async function transicionar({ id, desde, hasta, accion, ctx, rol, datos, detalle
     if (!actual) {
       throw new AppError(404, 'La muestra no existe.', 'MUESTRA_NO_ENCONTRADA');
     }
-    if (!desde.includes(actual.estado)) {
+    if (!permiteTransicionMuestra(actual.estado, accion)) {
       throw new AppError(
         409,
         `No es posible ejecutar "${accion}" sobre una muestra en estado ${actual.estado}.`,
@@ -253,8 +259,7 @@ export function receptarMuestra(id: number, ctx: AuditContext, rol: RolNombre) {
     id,
     ctx,
     rol,
-    desde: [EstadoMuestra.REGISTRADA],
-    hasta: EstadoMuestra.RECEPTADA,
+    permiso: 'muestras.receptar',
     accion: 'RECEPTAR',
     datos: () => ({ fechaRecepcion: new Date(), usuarioIdRecepciona: ctx.usuarioId }),
   });
@@ -265,8 +270,7 @@ export function iniciarProcesamiento(id: number, ctx: AuditContext, rol: RolNomb
     id,
     ctx,
     rol,
-    desde: [EstadoMuestra.RECEPTADA],
-    hasta: EstadoMuestra.EN_PROCESAMIENTO,
+    permiso: 'muestras.procesar',
     accion: 'INICIAR_PROCESAMIENTO',
     datos: () => ({ fechaProcesamiento: new Date() }),
   });
@@ -282,8 +286,7 @@ export function rechazarMuestra(id: number, motivoRechazo: string, ctx: AuditCon
     id,
     ctx,
     rol,
-    desde: [EstadoMuestra.REGISTRADA, EstadoMuestra.RECEPTADA],
-    hasta: EstadoMuestra.RECHAZADA,
+    permiso: 'muestras.rechazar',
     accion: 'RECHAZAR',
     detalle: { motivoRechazo },
     datos: (actual) => ({

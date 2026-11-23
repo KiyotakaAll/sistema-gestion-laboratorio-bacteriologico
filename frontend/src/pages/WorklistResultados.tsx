@@ -73,6 +73,7 @@ export default function WorklistResultados() {
           item={seleccionado}
           puedeEditar={puede('resultados.escribir')}
           onCerrar={() => setSeleccionado(null)}
+          onConflicto={recargar}
           onGuardado={() => {
             setSeleccionado(null);
             recargar();

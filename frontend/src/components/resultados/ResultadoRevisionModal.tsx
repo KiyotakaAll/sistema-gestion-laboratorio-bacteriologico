@@ -1,8 +1,9 @@
+import { permiteResultado } from '../../../../backend/src/domain/flujo-clinico';
 import { identificacionTexto } from '../../utils/identificacion';
 import { IconoValidacion, IconoCompletado } from '../icons/LabZenIcon';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useToast } from '../../context/ToastContext';
-import { mensajeDeError } from '../../services/api';
+import { esConflictoClinico, mensajeDeError } from '../../services/api';
 import { resultadosApi } from '../../services/laboratorio';
 import type { ResultadoDetalle } from '../../types/api';
 import { SEXO_ETIQUETA, edadALaToma, formatFechaHora, nombrePaciente } from '../../utils/format';
@@ -20,11 +21,14 @@ interface Props {
   puedeValidar: boolean;
   onCerrar: () => void;
   onValidado: (resultado: ResultadoDetalle) => void;
+  onConflicto?: () => void;
 }
 
 /** Revisión y validación formal (doble firma) de un resultado. */
-export function ResultadoRevisionModal({ resultado: inicial, usuarioActualId, puedeValidar, onCerrar, onValidado }: Props) {
+export function ResultadoRevisionModal({ resultado: inicial, usuarioActualId, puedeValidar, onCerrar, onValidado, onConflicto }: Props) {
   const toast = useToast();
+  const enCurso = useRef(false);
+  const [obsoleto, setObsoleto] = useState(false);
   const [resultado, setResultado] = useState(inicial);
   const [confirmando, setConfirmando] = useState(false);
   const [validando, setValidando] = useState(false);
@@ -34,20 +38,34 @@ export function ResultadoRevisionModal({ resultado: inicial, usuarioActualId, pu
   const paciente = muestra.solicitud.paciente;
   const validado = resultado.estado === 'VALIDADO';
   const esQuienRegistro = resultado.usuarioIdRegistra === usuarioActualId;
-  const puedeFirmar = puedeValidar && !validado && !esQuienRegistro;
+  const puedeFirmar = puedeValidar && !validado && !esQuienRegistro && !obsoleto && permiteResultado(muestra.estado, 'validar');
 
   async function validar() {
+    if (enCurso.current || !puedeFirmar) return;
+    enCurso.current = true;
     setValidando(true);
     setError(null);
     try {
-      const actualizado = await resultadosApi.validar(resultado.id);
+      const actualizado = await resultadosApi.validar(resultado.id, resultado.updatedAt);
       setResultado(actualizado);
       setConfirmando(false);
       toast.exito('Resultado validado');
       onValidado(actualizado);
     } catch (e) {
-      setError(mensajeDeError(e));
+      if (esConflictoClinico(e)) {
+        setConfirmando(false);
+        setObsoleto(true);
+        onConflicto?.();
+        setError(`${mensajeDeError(e)} No se confirmó la firma. Revise los datos actualizados antes de confirmar otra vez.`);
+        try {
+          setResultado(await resultadosApi.obtener(resultado.id));
+          setObsoleto(false);
+        } catch {
+          setError('No fue posible actualizar el resultado. Cierre y vuelva a abrir el registro antes de firmar.');
+        }
+      } else setError(mensajeDeError(e));
     } finally {
+      enCurso.current = false;
       setValidando(false);
     }
   }

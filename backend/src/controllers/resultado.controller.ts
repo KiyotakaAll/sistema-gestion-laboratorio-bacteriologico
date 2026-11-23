@@ -7,6 +7,7 @@ import {
   listarResultadosQuerySchema,
   registrarResultadoSchema,
   worklistQuerySchema,
+  versionResultadoSchema,
 } from '../validators/resultado.validator';
 
 export const worklist = asyncHandler(async (req, res) => {
@@ -38,5 +39,6 @@ export const actualizar = asyncHandler(async (req, res) => {
 
 export const validar = asyncHandler(async (req, res) => {
   const { id } = idParamSchema.parse(req.params);
-  res.json({ data: await resultadoService.validarResultado(id, auditContext(req)) });
+  const { updatedAt } = versionResultadoSchema.parse(req.body);
+  res.json({ data: await resultadoService.validarResultado(id, auditContext(req), updatedAt) });
 });

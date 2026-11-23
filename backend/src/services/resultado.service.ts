@@ -1,4 +1,6 @@
-import { politicaOperativaActiva, puedeRol } from './permisos.service';
+import { permiteResultado, permiteTransicionMuestra } from '../domain/flujo-clinico';
+import { bloquearMuestra, conflictoClinico, exigirPermisoClinico, exigirVersion, siguienteVersion, transaccionClinica } from './flujo-clinico.service';
+import { hallazgosResultadoSchema } from '../validators/resultado.validator';
 import { seleccionSolicitudBase } from './medicos-disponibilidad';
 import { seleccionPaciente } from './identificacion-paciente';
 import { EstadoMuestra, EstadoResultado, Prisma } from '@prisma/client';
@@ -98,7 +100,12 @@ export async function obtenerResultadoPorId(id: number) {
  * una sola transacción: resultado + antibiograma + auditoría + cierre de muestra.
  */
 export async function registrarResultado(input: RegistrarResultadoInput, ctx: AuditContext) {
-  return prisma.$transaction(async (tx) => {
+  hallazgosResultadoSchema.parse(input);
+  return transaccionClinica(async (tx) => {
+    await exigirPermisoClinico(tx, ctx, 'resultados.escribir');
+    const referencia = await tx.muestraExamen.findUnique({ where: { id: input.muestraExamenId }, select: { muestraId: true } });
+    if (!referencia) throw new AppError(404, 'El examen de la muestra no existe.', 'MUESTRA_EXAMEN_NO_ENCONTRADO');
+    await bloquearMuestra(tx, referencia.muestraId);
     const muestraExamen = await tx.muestraExamen.findUnique({
       where: { id: input.muestraExamenId },
       select: {
@@ -111,7 +118,7 @@ export async function registrarResultado(input: RegistrarResultadoInput, ctx: Au
     if (!muestraExamen) {
       throw new AppError(404, 'El examen de la muestra no existe.', 'MUESTRA_EXAMEN_NO_ENCONTRADO');
     }
-    if (muestraExamen.muestra.estado !== EstadoMuestra.EN_PROCESAMIENTO) {
+    if (!permiteResultado(muestraExamen.muestra.estado, 'registrar')) {
       throw new AppError(
         409,
         'Solo se pueden cargar resultados de muestras en procesamiento.',
@@ -151,22 +158,21 @@ export async function registrarResultado(input: RegistrarResultadoInput, ctx: Au
       where: { muestraId: muestraExamen.muestraId, resultado: { is: null } },
     });
 
-    if (pendientes === 0) {
+    if (pendientes === 0 && permiteTransicionMuestra(muestraExamen.muestra.estado, 'COMPLETAR_PROCESAMIENTO')) {
       const { count } = await tx.muestra.updateMany({
         where: { id: muestraExamen.muestraId, estado: EstadoMuestra.EN_PROCESAMIENTO },
         data: { estado: EstadoMuestra.PROCESADA },
       });
-      if (count === 1) {
-        await registrarLog(tx, {
-          usuarioId: ctx.usuarioId,
-          entidad: 'MUESTRA',
-          entidadId: muestraExamen.muestraId,
-          accion: 'COMPLETAR_PROCESAMIENTO',
-          estadoAnterior: EstadoMuestra.EN_PROCESAMIENTO,
-          estadoNuevo: EstadoMuestra.PROCESADA,
-          ip: ctx.ip,
-        });
-      }
+      if (count !== 1) conflictoClinico();
+      await registrarLog(tx, {
+        usuarioId: ctx.usuarioId,
+        entidad: 'MUESTRA',
+        entidadId: muestraExamen.muestraId,
+        accion: 'COMPLETAR_PROCESAMIENTO',
+        estadoAnterior: EstadoMuestra.EN_PROCESAMIENTO,
+        estadoNuevo: EstadoMuestra.PROCESADA,
+        ip: ctx.ip,
+      });
     }
 
     return tx.resultado.findUniqueOrThrow({ where: { id: resultado.id }, include: await resultadoInclude(tx) });
@@ -179,26 +185,28 @@ export async function registrarResultado(input: RegistrarResultadoInput, ctx: Au
  * nunca firma contenido que él mismo editó (doble firma real).
  */
 export async function actualizarResultado(id: number, input: ActualizarResultadoInput, ctx: AuditContext) {
-  return prisma.$transaction(async (tx) => {
-    const actual = await tx.resultado.findUnique({ where: { id }, select: { estado: true } });
-    if (!actual) {
-      throw new AppError(404, 'El resultado no existe.', 'RESULTADO_NO_ENCONTRADO');
-    }
-    if (actual.estado === EstadoResultado.VALIDADO) {
-      throw new AppError(409, 'Un resultado validado no puede modificarse.', 'RESULTADO_YA_VALIDADO');
-    }
+  hallazgosResultadoSchema.parse(input);
+  return transaccionClinica(async (tx) => {
+    await exigirPermisoClinico(tx, ctx, 'resultados.escribir');
+    const actual = await resultadoParaEscritura(tx, id);
+    exigirResultadoPendiente(actual.estado);
+    exigirVersion(actual.updatedAt, input.updatedAt);
+    exigirMuestraOperable(actual.muestraExamen.muestra.estado, 'corregir');
 
     // Se escribe `null` (no `undefined`) para poder limpiar campos que el usuario vació.
-    await tx.resultado.update({
-      where: { id },
+    const { count } = await tx.resultado.updateMany({
+      where: { id, estado: EstadoResultado.PENDIENTE_VALIDACION, updatedAt: actual.updatedAt },
       data: {
         usuarioIdRegistra: ctx.usuarioId,
+        updatedAt: siguienteVersion(actual.updatedAt),
         hallazgoGram: input.hallazgoGram ?? null,
         colonias: input.colonias ?? null,
         bacteriaAislada: input.bacteriaAislada ?? null,
         observaciones: input.observaciones ?? null,
       },
     });
+
+    if (count !== 1) conflictoClinico();
 
     await tx.resultadoAntibiograma.deleteMany({ where: { resultadoId: id } });
     if (input.antibiograma.length > 0) {
@@ -214,7 +222,7 @@ export async function actualizarResultado(id: number, input: ActualizarResultado
       accion: 'CORREGIR',
       estadoAnterior: actual.estado,
       estadoNuevo: actual.estado,
-      detalle: { antibioticos: input.antibiograma.length },
+      detalle: { muestraId: actual.muestraExamen.muestraId, antibioticos: input.antibiograma.length, versionAnterior: actual.updatedAt.toISOString() },
       ip: ctx.ip,
     });
 
@@ -232,25 +240,23 @@ export async function actualizarResultado(id: number, input: ActualizarResultado
  *     el estado en el WHERE para que dos validaciones simultáneas no pasen;
  *  4. registra la auditoría en la misma transacción.
  */
-export async function validarResultado(id: number, ctx: AuditContext) {
-  return prisma.$transaction(async (tx) => {
-    if (politicaOperativaActiva()) {
-      const firmante = await tx.usuario.findUnique({ where: { id: ctx.usuarioId },
-        select: { activo: true, rol: { select: { nombre: true } } } });
-      if (!firmante?.activo || !puedeRol(firmante.rol.nombre, 'resultados.validar'))
-        throw new AppError(403, 'La validación final requiere un bacteriólogo vigente.', 'FIRMA_PROFESIONAL_REQUERIDA');
-    }
-
-    const actual = await tx.resultado.findUnique({
-      where: { id },
-      select: { estado: true, usuarioIdRegistra: true, muestraExamen: { select: { muestraId: true } } },
+export async function validarResultado(id: number, ctx: AuditContext, updatedAt?: string) {
+  return transaccionClinica(async (tx) => {
+    await exigirPermisoClinico(tx, ctx, 'resultados.validar');
+    const actual = await resultadoParaEscritura(tx, id);
+    exigirResultadoPendiente(actual.estado);
+    exigirVersion(actual.updatedAt, updatedAt);
+    exigirMuestraOperable(actual.muestraExamen.muestra.estado, 'validar');
+    // Se validan los datos persistidos, incluidos registros históricos incompletos.
+    const hallazgos = hallazgosResultadoSchema.safeParse({
+      hallazgoGram: actual.hallazgoGram ?? undefined,
+      colonias: actual.colonias ?? undefined,
+      bacteriaAislada: actual.bacteriaAislada ?? undefined,
+      observaciones: actual.observaciones ?? undefined,
+      antibiograma: actual.antibiograma.map(item => ({ ...item,
+        haloMm: item.haloMm == null ? undefined : Number(item.haloMm) })),
     });
-    if (!actual) {
-      throw new AppError(404, 'El resultado no existe.', 'RESULTADO_NO_ENCONTRADO');
-    }
-    if (actual.estado === EstadoResultado.VALIDADO) {
-      throw new AppError(409, 'El resultado ya fue validado.', 'RESULTADO_YA_VALIDADO');
-    }
+    if (!hallazgos.success) throw new AppError(409, 'El resultado está incompleto o contiene hallazgos inconsistentes. Debe corregirse antes de validar.', 'RESULTADO_INCOMPLETO');
     if (actual.usuarioIdRegistra === ctx.usuarioId) {
       throw new AppError(
         403,
@@ -261,11 +267,12 @@ export async function validarResultado(id: number, ctx: AuditContext) {
 
     const fechaValidacion = new Date();
     const { count } = await tx.resultado.updateMany({
-      where: { id, estado: EstadoResultado.PENDIENTE_VALIDACION },
+      where: { id, estado: EstadoResultado.PENDIENTE_VALIDACION, updatedAt: actual.updatedAt, usuarioIdRegistra: actual.usuarioIdRegistra },
       data: {
         estado: EstadoResultado.VALIDADO,
         usuarioIdValida: ctx.usuarioId,
         fechaValidacion,
+        updatedAt: siguienteVersion(actual.updatedAt),
       },
     });
     if (count !== 1) {
@@ -293,4 +300,27 @@ export async function validarResultado(id: number, ctx: AuditContext) {
 
     return tx.resultado.findUniqueOrThrow({ where: { id }, include: await resultadoInclude(tx) });
   });
+}
+
+/** La referencia no es una lectura clínica: se vuelve a leer tras bloquear la muestra. */
+async function resultadoParaEscritura(tx: TxClient, id: number) {
+  const referencia = await tx.resultado.findUnique({ where: { id }, select: { muestraExamen: { select: { muestraId: true } } } });
+  if (!referencia) throw new AppError(404, 'El resultado no existe.', 'RESULTADO_NO_ENCONTRADO');
+  await bloquearMuestra(tx, referencia.muestraExamen.muestraId);
+  await tx.$queryRaw`SELECT id FROM resultados WHERE id = ${id} FOR UPDATE`;
+  const actual = await tx.resultado.findUnique({ where: { id }, include: {
+    antibiograma: true, muestraExamen: { select: { muestraId: true, muestra: { select: { estado: true } } } },
+  } });
+  if (!actual) throw new AppError(404, 'El resultado no existe.', 'RESULTADO_NO_ENCONTRADO');
+  return actual;
+}
+
+function exigirResultadoPendiente(estado: string) {
+  if (estado !== EstadoResultado.PENDIENTE_VALIDACION)
+    throw new AppError(409, 'Un resultado validado no puede modificarse ni validarse otra vez.', 'RESULTADO_YA_VALIDADO');
+}
+
+function exigirMuestraOperable(estado: string, operacion: 'corregir' | 'validar') {
+  if (!permiteResultado(estado, operacion))
+    throw new AppError(409, 'La muestra no permite esta operación sobre sus resultados.', 'ESTADO_MUESTRA_INVALIDO');
 }

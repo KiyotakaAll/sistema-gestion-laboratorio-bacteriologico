@@ -21,11 +21,11 @@ vi.mock('../services/medicos', () => ({ medicosApi: { capacidades: vi.fn(async (
 const fecha='2026-01-01T13:00:00Z';
 const paciente={id:73,cedula:'00073',nombres:'Persona',apellidos:'Sintética',fechaNacimiento:'1990-01-01T00:00:00Z',sexo:'F'};
 const resultado={
-  id:20,usuarioIdRegistra:8,estado:'PENDIENTE_VALIDACION',fechaRegistro:fecha,
+  id:20,usuarioIdRegistra:8,estado:'PENDIENTE_VALIDACION',fechaRegistro:fecha,updatedAt:fecha,
   hallazgoGram:'Hallazgo sintético',colonias:null,bacteriaAislada:null,observaciones:null,antibiograma:[],
   registradoPor:{id:8,nombreCompleto:'Profesional Prueba'},validadoPor:null,fechaValidacion:null,
   muestraExamen:{examen:{id:1,nombre:'Examen sintético',codigo:'EX'},muestra:{id:3,codigoBarras:'M261101-TEST01',
-    tipoMuestra:'Orina',fechaToma:fecha,solicitud:{id:1,prioridad:'RUTINA',paciente}}},
+    tipoMuestra:'Orina',estado:'PROCESADA',fechaToma:fecha,solicitud:{id:1,prioridad:'RUTINA',paciente}}},
 } as unknown as ResultadoDetalle;
 const pagina=<T,>(data:T[])=>({data,total:data.length,page:1,pageSize:25,totalPages:1});
 const sesion=(rol:RolNombre,operativa=true):UsuarioSesion=>({id:7,username:'prueba',nombreCompleto:'Persona Prueba',rol,autorizacion:autorizacionPara(rol,operativa)});
@@ -105,7 +105,7 @@ it('bacteriólogo confirma firma clínica de trabajo ajeno',async()=>{
   await userEvent.click(screen.getByRole('button',{name:'Validar resultado'}));
   expect(resultadosApi.validar).not.toHaveBeenCalled();
   await userEvent.click(screen.getByRole('button',{name:'Confirmar validación'}));
-  await waitFor(()=>expect(resultadosApi.validar).toHaveBeenCalledExactlyOnceWith(20));
+  await waitFor(()=>expect(resultadosApi.validar).toHaveBeenCalledExactlyOnceWith(20, fecha));
 });
 for(const rol of ['VALIDADOR','ADMINISTRADOR'] as const)it(`${rol} con política nueva consulta sin botón de firma`,async()=>{
   await abrirResultado(sesion(rol));expect(screen.queryByRole('button',{name:'Validar resultado'})).not.toBeInTheDocument();

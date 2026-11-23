@@ -86,6 +86,7 @@ export default function ValidacionAthenea() {
           usuarioActualId={usuario.id}
           puedeValidar={puedeValidar}
           onCerrar={() => setSeleccionado(null)}
+          onConflicto={recargar}
           onValidado={() => recargar()}
         />
       )}

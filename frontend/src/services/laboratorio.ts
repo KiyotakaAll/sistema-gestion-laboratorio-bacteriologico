@@ -117,7 +117,7 @@ export const resultadosApi = {
   obtener: (id: number) => api.get<{ data: ResultadoDetalle }>(`/resultados/${id}`).then(datos),
   registrar: (cuerpo: NuevoResultado) =>
     api.post<{ data: ResultadoDetalle }>('/resultados', cuerpo).then(datos),
-  actualizar: (id: number, cuerpo: HallazgosEntrada) =>
+  actualizar: (id: number, cuerpo: HallazgosEntrada & { updatedAt: string }) =>
     api.put<{ data: ResultadoDetalle }>(`/resultados/${id}`, cuerpo).then(datos),
-  validar: (id: number) => api.patch<{ data: ResultadoDetalle }>(`/resultados/${id}/validar`).then(datos),
+  validar: (id: number, updatedAt: string) => api.patch<{ data: ResultadoDetalle }>(`/resultados/${id}/validar`, { updatedAt }).then(datos),
 };

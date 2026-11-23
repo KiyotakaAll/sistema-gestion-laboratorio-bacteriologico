@@ -23,6 +23,7 @@ const evento = {
 let estadoMuestra;
 let resultado;
 let noExiste;
+let rolActual;
 
 function detalle(args) {
   consultas.push(args);
@@ -38,6 +39,8 @@ function detalle(args) {
 }
 
 const prisma = {
+  $queryRaw: async () => [],
+  usuario: { findUnique: async () => ({ activo: true, rol: { nombre: rolActual } }) },
   muestra: {
     findUnique: async (args) => {
       if (noExiste) return null;
@@ -67,6 +70,7 @@ const resultados = require('../src/routes/resultado.routes.ts').default;
 // Ejecutar el router real (autenticación, permisos, controlador y servicio)
 // en memoria, sin iniciar un servidor ni abrir sockets.
 function peticion(router, method, url, rol, body = {}) {
+  rolActual = rol;
   return new Promise((resolve, reject) => {
     const req = {
       method, url, originalUrl: url, query: {}, body, ip: '127.0.0.1',

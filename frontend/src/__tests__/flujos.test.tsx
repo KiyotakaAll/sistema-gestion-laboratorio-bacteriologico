@@ -381,7 +381,7 @@ describe('Validación con doble firma', () => {
     await u.click(await screen.findByRole('button', { name: /Validar resultado/ }));
     expect(screen.getByText(/ya no podrá modificarse/)).toBeInTheDocument();
     await u.click(screen.getByRole('button', { name: 'Confirmar validación' }));
-    await waitFor(() => expect(resultadosApi.validar).toHaveBeenCalledWith(7));
+    await waitFor(() => expect(resultadosApi.validar).toHaveBeenCalledWith(7, FECHA));
     expect(await screen.findByText('Dra. Ortiz')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Validar resultado/ })).not.toBeInTheDocument();
   });

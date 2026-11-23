@@ -1,10 +1,11 @@
+import { permiteTransicionMuestra } from '../../../../backend/src/domain/flujo-clinico';
 import { identificacionTexto } from '../../utils/identificacion';
 import { IconoRechazado, IconoRecepcionMuestras, IconoProcesamiento } from '../icons/LabZenIcon';
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { useCarga } from '../../hooks/useCarga';
-import { mensajeDeError } from '../../services/api';
+import { esConflictoClinico, mensajeDeError } from '../../services/api';
 import { muestrasApi } from '../../services/laboratorio';
 import type { EventoTrazabilidad, MuestraDetalle } from '../../types/api';
 import { SEXO_ETIQUETA, edadALaToma, formatFechaHora, nombrePaciente } from '../../utils/format';
@@ -50,6 +51,7 @@ export function MuestraDetalleModal({ muestraId, onCerrar, onCambio }: Props) {
   const muestra = useCarga(() => muestrasApi.obtener(muestraId), [muestraId]);
   const trazabilidad = useCarga(() => muestrasApi.trazabilidad(muestraId), [muestraId]);
 
+  const enCurso = useRef(false);
   const [ejecutando, setEjecutando] = useState(false);
   const [errorAccion, setErrorAccion] = useState<string | null>(null);
   const [rechazando, setRechazando] = useState(false);
@@ -81,6 +83,8 @@ export function MuestraDetalleModal({ muestraId, onCerrar, onCambio }: Props) {
   );
 
   async function ejecutar(accion: () => Promise<unknown>, mensajeExito: string) {
+    if (enCurso.current || muestra.cargando || muestra.error) return;
+    enCurso.current = true;
     setEjecutando(true);
     setErrorAccion(null);
     try {
@@ -93,14 +97,21 @@ export function MuestraDetalleModal({ muestraId, onCerrar, onCambio }: Props) {
       onCambio();
     } catch (e) {
       setErrorAccion(mensajeDeError(e));
+      if (esConflictoClinico(e)) {
+        muestra.recargar();
+        trazabilidad.recargar();
+        setRechazando(false);
+      }
     } finally {
+      enCurso.current = false;
       setEjecutando(false);
     }
   }
 
-  const puedeReceptar = m?.estado === 'REGISTRADA' && puede('muestras.receptar');
-  const puedeProcesar = m?.estado === 'RECEPTADA' && puede('muestras.procesar');
-  const puedeRechazar = (m?.estado === 'REGISTRADA' || m?.estado === 'RECEPTADA') && puede('muestras.rechazar');
+  const disponible = m && !muestra.cargando && !muestra.error;
+  const puedeReceptar = disponible && permiteTransicionMuestra(m.estado, 'RECEPTAR') && puede('muestras.receptar');
+  const puedeProcesar = disponible && permiteTransicionMuestra(m.estado, 'INICIAR_PROCESAMIENTO') && puede('muestras.procesar');
+  const puedeRechazar = disponible && permiteTransicionMuestra(m.estado, 'RECHAZAR') && puede('muestras.rechazar');
 
   return (
     <Modal

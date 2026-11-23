@@ -57,7 +57,14 @@ export const registrarResultadoSchema = hallazgosBase
   .extend({ muestraExamenId: z.number().int().positive() })
   .superRefine(validarHallazgos);
 
-export const actualizarResultadoSchema = hallazgosBase.superRefine(validarHallazgos);
+export const hallazgosResultadoSchema = hallazgosBase.superRefine(validarHallazgos);
+
+export const versionResultadoSchema = z.object({
+  updatedAt: z.string().datetime({ offset: true }),
+});
+
+export const actualizarResultadoSchema = hallazgosBase
+  .extend(versionResultadoSchema.shape).superRefine(validarHallazgos);
 
 export const listarResultadosQuerySchema = paginacionSchema.extend({
   estado: z.enum(['PENDIENTE_VALIDACION', 'VALIDADO']).optional(),

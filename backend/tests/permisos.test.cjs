@@ -10,7 +10,9 @@ function sustituir(ruta, exports) {
 const env = { NODE_ENV: 'production', JWT_SECRET: 'clave-sintetica-exclusiva-politica-offline',
   JWT_EXPIRES_IN_SECONDS: 60, BCRYPT_ROUNDS: 4, PERMISOS_OPERATIVOS_HABILITADOS: false };
 let cuenta, consultas, cambios, logs, autor, estado, cantidad, fallo, rolDisponible, registro, consultaMuestra;
+const version = '2026-01-01T00:00:00.000Z';
 const prisma = {
+  $queryRaw: async () => [],
   usuario: {
     findUnique: async () => {
       consultas.push('usuario');
@@ -23,7 +25,7 @@ const prisma = {
   },
   rol: { findUnique: async ({where}) => { consultas.push(['rol',where.nombre]);return rolDisponible ? {id:where.nombre==='AUXILIAR'?5:2}:null; } },
   resultado: {
-    findUnique: async () => ({ estado, usuarioIdRegistra: autor, muestraExamen: { muestraId: 3 } }),
+    findUnique: async () => ({ estado, updatedAt: new Date(version), observaciones: 'Sin crecimiento', antibiograma: [], usuarioIdRegistra: autor, muestraExamen: { muestraId: 3, muestra: { estado: 'PROCESADA' } } }),
     updateMany: async ({data}) => { cambios.push(data); return {count:cantidad}; },
     findUniqueOrThrow: async () => ({id:20,estado:'VALIDADO'}),
   },
@@ -55,7 +57,7 @@ const { obtenerMuestraPorId } = require('../src/services/muestra.service.ts');
 const { asyncHandler } = require('../src/utils/http.ts');
 sustituir('../src/controllers/resultado.controller.ts',{
   worklist:centinela,listar:centinela,obtener:centinela,registrar:centinela,actualizar:centinela,
-  validar:asyncHandler(async(req,res)=>{ res.json({data:await validarResultado(Number(req.params.id),{usuarioId:req.user.id,ip:null})}); }),
+  validar:asyncHandler(async(req,res)=>{ res.json({data:await validarResultado(Number(req.params.id),{usuarioId:req.user.id,ip:null},version)}); }),
 });
 const routers = Object.fromEntries(['paciente','orden','medico','muestra','resultado','usuario','auth'].map(n=>[n,require('../src/routes/'+n+'.routes.ts').default]));
 const {errorHandler}=require('../src/middlewares/errorHandler.ts');
@@ -182,7 +184,7 @@ test('doble firma impide validar el resultado propio también con el perfil nuev
 });
 for(const rol of ['AUXILIAR','RECEPCIONISTA','VALIDADOR','ADMINISTRADOR'])test('servicio clínico tampoco permite firma no profesional '+rol,async()=>{
   env.PERMISOS_OPERATIVOS_HABILITADOS=true;cuenta.rol.nombre=rol;
-  await assert.rejects(validarResultado(20,{usuarioId:7,ip:null}),e=>e.code==='FIRMA_PROFESIONAL_REQUERIDA');assert.deepEqual(cambios,[]);
+  await assert.rejects(validarResultado(20,{usuarioId:7,ip:null},version),e=>e.code==='FIRMA_PROFESIONAL_REQUERIDA');assert.deepEqual(cambios,[]);
 });
 test('mantiene resultado validado inmutable y conflicto de validación concurrente',async()=>{
   env.PERMISOS_OPERATIVOS_HABILITADOS=true;cuenta.rol.nombre='BACTERIOLOGO';estado='VALIDADO';
