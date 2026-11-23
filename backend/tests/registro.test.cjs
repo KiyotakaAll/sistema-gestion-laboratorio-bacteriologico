@@ -1,6 +1,7 @@
 const assert = require('node:assert/strict');
 const { beforeEach, test } = require('node:test');
 const Module = require('node:module');
+require('./solo-mocks.cjs');
 // No se importa PrismaClient ni dotenv: las rutas y bcrypt sí son reales.
 function sustituir(ruta, exports) {
   const id = require.resolve(ruta);
@@ -11,6 +12,7 @@ function sustituir(ruta, exports) {
 const secreto = 'secreto-ficticio-solo-pruebas-en-memoria';
 let cuentas, fallo, rolDisponible, escrituras;
 const prisma = {
+  $queryRaw: async () => [],
   usuario: {
     findUnique: async ({ where }) => {
       if (fallo === 'consulta') throw new Error('Detalle interno confidencial');
@@ -56,6 +58,8 @@ beforeEach(() => { cuentas = []; escrituras = []; fallo = null; rolDisponible = 
 for (const [nombre, cambio] of [
   ['nombre obligatorio', { nombreCompleto: '' }], ['correo inválido', { email: 'sin-correo' }],
   ['clave débil', { password: 'abc', confirmacion: 'abc' }], ['confirmación distinta', { confirmacion: 'otra' }],
+  ['clave extremadamente común', { password: '12345678', confirmacion: '12345678' }],
+  ['más de 72 bytes ASCII', { password: 'r'.repeat(73), confirmacion: 'r'.repeat(73) }],
   ['límite bcrypt en bytes', { password: 'Á'.repeat(40) + 'a1!', confirmacion: 'Á'.repeat(40) + 'a1!' }],
   ['rol administrativo', { rol: 'ADMINISTRADOR' }], ['permisos', { permisos: ['todo'] }],
   ['activación pública', { activo: true }], ['rolId público', { rolId: 1 }],
@@ -82,6 +86,15 @@ test('registro real crea hash bcrypt y cuenta inactiva con rol fijo, sin token',
   assert.equal(login.status, 401); assert.equal(login.body.data, undefined);
   assert.equal((await peticion('/me', {}, undefined, undefined, 'GET')).status, 401);
 });
+for (const [caso, password] of [['ocho caracteres', 'calmaluz'], ['frase con Unicode y espacios', '  mi café mira al mar  ']]) {
+  test(`registro histórico admite ${caso} sin conceder privilegios`, async () => {
+    const r=await peticion('/register',{...valido,password,confirmacion:password});
+    assert.equal(r.status,202);assert.equal(r.body.data.token,undefined);assert.equal(escrituras.length,1);
+    assert.equal(escrituras[0].rolId,2);assert.equal(escrituras[0].activo,false);
+    assert.equal(await bcrypt.compare(password,escrituras[0].passwordHash),true);
+    assert.ok(!JSON.stringify(r).includes(password));assert.ok(!JSON.stringify(r).includes('passwordHash'));
+  });
+}
 test('duplicado devuelve la misma respuesta y no cambia cuenta existente', async () => {
   const primera = await peticion('/register', valido);
   const original = { ...cuentas[0] };
@@ -119,6 +132,22 @@ test('usuarios actuales conservan login por username y el perfil incluye correo'
     assert.equal(jwt.verify(r.body.data.token, secreto).rol, 'ADMINISTRADOR');
   }
 });
+for (const [caso, password] of [['corta histórica', 'lab'], ['común histórica', '12345678'],
+  ['frase y Unicode', '  mi café mira al mar  '], ['larga histórica', 'á'.repeat(40)]]) {
+  test(`hash existente: login conserva ${caso} sin rehash`, async () => {
+    const hashAnterior = await bcrypt.hash(password, 4);
+    const cuenta = { id: 7, username: 'cuenta.anterior', email: 'anterior@example.test',
+      nombreCompleto: 'Cuenta Anterior', activo: true, rol: { nombre: 'ADMINISTRADOR' }, passwordHash: hashAnterior };
+    cuentas.push(cuenta);
+    const hashOriginal = bcrypt.hash;
+    bcrypt.hash = async () => { throw new Error('El login no debe rehashear'); };
+    try {
+      assert.equal((await peticion('/login', { username: cuenta.username, password })).status, 200);
+      assert.equal((await peticion('/login', { username: cuenta.username, password: 'clave equivocada' })).status, 401);
+      assert.equal(cuenta.passwordHash, hashAnterior);assert.equal(escrituras.length, 0);
+    } finally { bcrypt.hash = hashOriginal; }
+  });
+}
 test('limita intentos de registro antes de calcular hashes', () => {
   let ultimo, espera;
   for (let i = 0; i < 6; i++) limitarRegistro({ ip: 'limite-aislado' }, { setHeader: (_, v) => { espera = v; } }, (err) => { ultimo = err; });

@@ -1,4 +1,5 @@
 import { permiteTransicionMuestra } from '../../../../backend/src/domain/flujo-clinico';
+import { DocumentoAcciones } from '../documentos/DocumentoAcciones';
 import { identificacionTexto } from '../../utils/identificacion';
 import { IconoRechazado, IconoRecepcionMuestras, IconoProcesamiento } from '../icons/LabZenIcon';
 import { useMemo, useRef, useState } from 'react';
@@ -123,6 +124,7 @@ export function MuestraDetalleModal({ muestraId, onCerrar, onCambio }: Props) {
       pie={
         <>
           <Button onClick={onCerrar} disabled={ejecutando}>Cerrar</Button>
+          {m && puede('informes.descargar') && <DocumentoAcciones clase="informe" solicitudId={m.solicitudId} disabled={ejecutando || m.estado !== 'PROCESADA'} />}
           {puedeRechazar && !rechazando && (
             <Button variante="peligro" icono={<IconoRechazado className="h-3.5 w-3.5" aria-hidden />} onClick={() => setRechazando(true)} disabled={ejecutando}>
               Rechazar muestra

@@ -1,3 +1,5 @@
+import { seleccionExamen, ordenesAsistidasActivas, exigirOrdenesAsistidas, prepararExamenesSolicitados } from './catalogo.service';
+import { normalizarCatalogo } from '../domain/catalogo-clinico';
 import { TRANSICIONES_MUESTRA, permiteTransicionMuestra, type AccionMuestra } from '../domain/flujo-clinico';
 import { bloquearMuestra, exigirPermisoClinico, transaccionClinica } from './flujo-clinico.service';
 import type { Permiso } from '../domain/permisos';
@@ -37,7 +39,7 @@ async function muestraDetalleInclude(rol: RolNombre, cliente: TxClient = prisma)
     recepcionadoPor: { select: { id: true, username: true, nombreCompleto: true } },
     examenes: {
       include: {
-        examen: true,
+        examen: { select: seleccionExamen() },
         ...(puedeVerResultados
           ? { resultado: { include: { antibiograma: { orderBy: { antibiotico: 'asc' as const } } } } }
           : {}),
@@ -70,6 +72,7 @@ function generarCodigoBarras(): string {
 }
 
 export async function registrarMuestra(input: RegistrarMuestraInput, ctx: AuditContext, rol: RolNombre) {
+  if (ordenesAsistidasActivas() || input.sitioAnatomicoId !== undefined) await exigirOrdenesAsistidas();
   return transaccionClinica(async (tx) => {
     rol = await exigirPermisoClinico(tx, ctx, 'muestras.registrar');
     const solicitud = await tx.solicitud.findUnique({
@@ -92,6 +95,30 @@ export async function registrarMuestra(input: RegistrarMuestraInput, ctx: AuditC
       );
     }
 
+    let sitioAnatomico = input.sitioAnatomico;
+    let tipoMuestra = input.tipoMuestra;
+    if (ordenesAsistidasActivas()) {
+      const preparados = await prepararExamenesSolicitados(tx, input.examenIds.map(examenId => ({
+        examenId, tipoMuestra: input.tipoMuestra, sitioAnatomicoId: input.sitioAnatomicoId,
+      })));
+      sitioAnatomico = preparados[0]?.sitioAnatomico ?? undefined;
+      tipoMuestra = preparados[0]?.tipoMuestra ?? input.tipoMuestra;
+      if (input.sitioAnatomico && normalizarCatalogo(input.sitioAnatomico) !== normalizarCatalogo(sitioAnatomico ?? ''))
+        throw new AppError(422, 'Seleccione el sitio desde el catálogo.', 'SITIO_INCOMPATIBLE');
+      // Serializa asignaciones para no consumir dos veces un examen de la orden.
+      await tx.$queryRaw`SELECT id FROM solicitudes WHERE id = ${input.solicitudId} FOR UPDATE`;
+      const orden = await tx.solicitudExamen.findMany({ where: { solicitudId: input.solicitudId } });
+      if (orden.length) {
+        if (input.examenIds.some(id => !orden.some(l => l.examenId === id
+          && normalizarCatalogo(l.tipoMuestra) === normalizarCatalogo(input.tipoMuestra)
+          && (l.sitioAnatomicoId ?? null) === (input.sitioAnatomicoId ?? null))))
+          throw new AppError(422, 'La muestra debe corresponder a los exámenes y sitios de la orden.', 'ORDEN_MUESTRA_INCOMPATIBLE');
+        const asignados = await tx.muestraExamen.count({ where: { examenId: { in: input.examenIds },
+          muestra: { solicitudId: input.solicitudId, estado: { not: 'RECHAZADA' } } } });
+        if (asignados) throw new AppError(409, 'Algún examen ya tiene una muestra activa. Actualice la solicitud.', 'EXAMEN_YA_ASIGNADO');
+      }
+    }
+
     // La unicidad real la garantiza el UNIQUE de BD; este bucle solo evita el reintento manual.
     let codigoBarras = generarCodigoBarras();
     while (await tx.muestra.findUnique({ where: { codigoBarras }, select: { id: true } })) {
@@ -102,8 +129,8 @@ export async function registrarMuestra(input: RegistrarMuestraInput, ctx: AuditC
       data: {
         codigoBarras,
         solicitudId: input.solicitudId,
-        tipoMuestra: input.tipoMuestra,
-        sitioAnatomico: input.sitioAnatomico,
+        tipoMuestra,
+        sitioAnatomico,
         fechaToma: input.fechaToma,
         examenes: { create: input.examenIds.map((examenId) => ({ examenId })) },
       },

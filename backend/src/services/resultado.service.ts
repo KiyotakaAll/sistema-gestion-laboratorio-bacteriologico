@@ -1,3 +1,4 @@
+import { seleccionExamen } from './catalogo.service';
 import { permiteResultado, permiteTransicionMuestra } from '../domain/flujo-clinico';
 import { bloquearMuestra, conflictoClinico, exigirPermisoClinico, exigirVersion, siguienteVersion, transaccionClinica } from './flujo-clinico.service';
 import { hallazgosResultadoSchema } from '../validators/resultado.validator';
@@ -23,7 +24,7 @@ const resultadoInclude = async (cliente: TxClient = prisma) => ({
   validadoPor: usuarioResumen,
   muestraExamen: {
     include: {
-      examen: true,
+      examen: { select: seleccionExamen() },
       muestra: { include: { solicitud: { select: { ...await seleccionSolicitudBase(cliente), paciente: { select: seleccionPaciente() } } } } },
     },
   },
@@ -41,7 +42,7 @@ export async function obtenerWorklist({ soloPendientes }: WorklistQuery) {
       ...(soloPendientes ? { resultado: { is: null } } : {}),
     },
     include: {
-      examen: true,
+      examen: { select: seleccionExamen() },
       muestra: { include: { solicitud: { select: { ...await seleccionSolicitudBase(), paciente: { select: seleccionPaciente() } } } } },
       resultado: { include: { antibiograma: { orderBy: { antibiotico: 'asc' } } } },
     },

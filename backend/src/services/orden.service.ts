@@ -10,6 +10,8 @@ import type {
   ListarSolicitudesQuery,
 } from '../validators/orden.validator';
 import { registrarLog } from './auditoria.service';
+import { exigirOrdenesAsistidas, ordenesAsistidasActivas, prepararExamenesSolicitados, seleccionExamen } from './catalogo.service';
+import { exigirPermisoClinico } from './flujo-clinico.service';
 
 const MAX_REINTENTOS_CODIGO = 3;
 
@@ -17,6 +19,7 @@ const solicitudSelect = async () => ({
   ...await seleccionSolicitudBase(),
   paciente: { select: seleccionPaciente() },
   registradoPor: { select: { id: true, username: true, nombreCompleto: true } },
+  ...(ordenesAsistidasActivas() ? { examenesSolicitados: { include: { examen: { select: seleccionExamen() } } } } : {}),
   muestras: {
     include: { examenes: { include: { examen: { select: { id: true, codigo: true, nombre: true } } } } },
     orderBy: { fechaToma: 'asc' },
@@ -50,11 +53,15 @@ function esColisionDeCodigo(error: unknown): boolean {
  * aquí se reintenta la transacción completa con un número nuevo.
  */
 export async function crearSolicitud(input: CrearSolicitudInput, ctx: AuditContext) {
+  if (ordenesAsistidasActivas() && !input.examenesSolicitados?.length)
+    throw new AppError(422, 'Seleccione al menos un examen para la orden.', 'EXAMENES_ORDEN_REQUERIDOS');
+  if (input.examenesSolicitados !== undefined) await exigirOrdenesAsistidas();
   if (input.medicoRemitenteId !== undefined) await exigirDirectorioMedicos();
   const select = await solicitudSelect();
   for (let intento = 1; intento <= MAX_REINTENTOS_CODIGO; intento += 1) {
     try {
       return await prisma.$transaction(async (tx) => {
+        if (input.examenesSolicitados) await exigirPermisoClinico(tx, ctx, 'solicitudes.escribir');
         const paciente = await tx.paciente.findUnique({
           where: { id: input.pacienteId },
           select: { id: true },
@@ -65,6 +72,7 @@ export async function crearSolicitud(input: CrearSolicitudInput, ctx: AuditConte
 
         const remitente: { medicoRemitenteId?: number; medicoRemitenteNombre?: string } = input.medicoRemitenteId != null
           ? await medicoActivoParaSolicitud(tx, input.medicoRemitenteId) : {};
+        const lineas = input.examenesSolicitados ? await prepararExamenesSolicitados(tx, input.examenesSolicitados) : null;
         const solicitud = await tx.solicitud.create({
           data: {
             codigo: await siguienteCodigo(tx),
@@ -75,6 +83,7 @@ export async function crearSolicitud(input: CrearSolicitudInput, ctx: AuditConte
             diagnosticoPresuntivo: input.diagnosticoPresuntivo,
             prioridad: input.prioridad,
             observaciones: input.observaciones,
+            ...(lineas ? { examenesSolicitados: { create: lineas } } : {}),
           },
           select,
         });
@@ -85,6 +94,7 @@ export async function crearSolicitud(input: CrearSolicitudInput, ctx: AuditConte
           entidadId: solicitud.id,
           accion: 'CREAR',
           detalle: { codigo: solicitud.codigo, pacienteId: input.pacienteId,
+            ...(lineas ? { examenIds: lineas.map(l => l.examenId) } : {}),
             ...(input.medicoRemitenteId != null ? { medicoRemitenteId: input.medicoRemitenteId,
               medicoRemitenteNombre: remitente.medicoRemitenteNombre ?? null } : {}),
           },
@@ -106,6 +116,8 @@ export async function crearSolicitud(input: CrearSolicitudInput, ctx: AuditConte
 
 export async function listarSolicitudes(filtros: ListarSolicitudesQuery) {
   const where: Prisma.SolicitudWhereInput = {
+    ...(filtros.q ? { OR: [{ codigo: { contains: filtros.q } },
+      { paciente: { OR: [{ nombres: { contains: filtros.q } }, { apellidos: { contains: filtros.q } }, filtroDocumento(filtros.q)] } }] } : {}),
     ...(filtros.pacienteId ? { pacienteId: filtros.pacienteId } : {}),
     ...(filtros.prioridad ? { prioridad: filtros.prioridad } : {}),
     ...(filtros.cedula ? { paciente: filtroDocumento(filtros.cedula) } : {}),
@@ -156,6 +168,7 @@ export async function obtenerSolicitudPorId(id: number) {
 export async function listarExamenes() {
   return prisma.examen.findMany({
     where: { activo: true },
+    select: seleccionExamen(),
     orderBy: { nombre: 'asc' },
   });
 }

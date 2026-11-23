@@ -9,6 +9,7 @@ function sustituir(ruta, exports) {
 }
 const env = { NODE_ENV: 'production', JWT_SECRET: 'clave-ficticia-pruebas-medicos-offline', MEDICOS_REMITENTES_HABILITADOS: true };
 let medicos, solicitudes, calls, logs, fallo, esquema, seq;
+let rolSesion = 'RECEPCIONISTA';
 const ficha = { nombres: 'Ana', apellidos: 'Prueba', registroProfesional: null, especialidad: null,
   telefono: null, email: null, institucion: null };
 const medico = (id, extra = {}) => ({ id, ...ficha, activo: true, createdAt: new Date('2026-01-01Z'), updatedAt: new Date('2026-01-01Z'), ...extra });
@@ -29,6 +30,22 @@ function unique(data, id) {
   }
 }
 const prisma = {
+  usuario: {
+    findUnique: async ({ where }) => {
+      if (where.id !== 7) return null;
+
+      return {
+        id: 7,
+        activo: true,
+        eliminadoAt: null,
+        versionSesion: 0,
+        username: 'prueba',
+        nombreCompleto: 'Prueba',
+        rol: { nombre: rolSesion },
+      };
+    },
+  },
+
   medicoRemitente: {
     create: capture('medico.create', ({data,select}) => { unique(data); const m=medico(++seq,data); medicos.set(m.id,m); return project(m,select); }),
     update: capture('medico.update', ({where,data,select}) => { unique(data,where.id); const m={...medicos.get(where.id),...data}; medicos.set(m.id,m);return project(m,select); }),
@@ -79,6 +96,8 @@ const pacientes = require('../src/services/paciente.service.ts');
 const muestras = require('../src/services/muestra.service.ts');
 const resultados = require('../src/services/resultado.service.ts');
 function request(method, url, body={}, rol='RECEPCIONISTA', query={}, r=router) {
+  rolSesion = rol;
+
   return new Promise((resolve,reject) => {
     const token=rol?jwt.sign({sub:'7',username:'prueba',nombre:'Prueba',rol},env.JWT_SECRET,{algorithm:'HS256'}):null;
     const req={method,url,originalUrl:url,body,query,ip:'127.0.0.1',headers:token?{authorization:'Bearer '+token}:{}};
@@ -205,6 +224,14 @@ test('solicitud crea vínculo opcional y snapshot, sin tocar paciente ni relacio
   assert.equal(r.status,201);assert.equal(r.body.data.pacienteId,73);assert.equal(r.body.data.medicoRemitenteId,1);
   assert.equal(r.body.data.medicoSolicitante,'Ana Prueba');assert.equal(r.body.data.medicoRemitenteNombre,'Ana Prueba');
   assert.ok(calls.some(([n,sql])=>n==='sql'&&sql.includes('FOR UPDATE')));
+});
+test('solicitud conserva un ID numérico si INT UNSIGNED llega como bigint desde la consulta bloqueada',async()=>{
+  medicos.set(1,medico(1n));
+  const r=await solicitud('POST','/solicitudes',{pacienteId:73,medicoRemitenteId:1});
+  assert.equal(r.status,201);
+  assert.equal(r.body.data.medicoRemitenteId,1);
+  assert.equal(calls.find(([name])=>name==='solicitud.create')[1].data.medicoRemitenteId,1);
+  assert.equal(r.body.data.medicoRemitenteNombre,'Ana Prueba');
 });
 test('edita vínculo conservando el texto histórico; cambios de ficha no reescriben snapshot',async()=>{
   medicos.set(1,medico(1));

@@ -9,4 +9,7 @@ router.get('/', usuarioController.listar);
 router.get('/capacidades', usuarioController.capacidades);
 router.post('/', usuarioController.crear);
 router.patch('/:id/activar', usuarioController.activar);
+router.patch('/:id/desactivar', usuarioController.desactivar);
+router.patch('/:id/perfil', usuarioController.asignarPerfil);
+router.delete('/:id', usuarioController.eliminar);
 export default router;

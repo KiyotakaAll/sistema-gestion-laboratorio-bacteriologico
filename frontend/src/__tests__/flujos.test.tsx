@@ -16,6 +16,8 @@ import {
 } from '../services/laboratorio';
 import type { RolNombre } from '../types/api';
 
+vi.mock('../services/catalogos', () => ({ catalogosApi: { flujo: vi.fn(async () => ({ habilitado: false, tiposMuestra: [], sitios: [], plantillas: [] })) } }));
+
 vi.mock('../services/medicos', () => ({ medicosApi: { capacidades: vi.fn(async () => ({ directorioMedicos: false })) } }));
 
 vi.mock('../services/laboratorio', () => ({

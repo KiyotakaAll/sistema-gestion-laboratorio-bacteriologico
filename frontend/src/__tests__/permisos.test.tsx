@@ -49,7 +49,7 @@ for(const rol of ['AUXILIAR','BACTERIOLOGO','ADMINISTRADOR','RECEPCIONISTA','VAL
   const u=sesion(rol);
   expect(puedeUsuario(u,'usuarios.administrar')).toBe(rol==='ADMINISTRADOR');
   expect(puedeUsuario(u,'resultados.validar')).toBe(rol==='BACTERIOLOGO');
-  expect(puedeUsuario(u,'pacientes.escribir')).toBe(['AUXILIAR','RECEPCIONISTA','ADMINISTRADOR'].includes(rol));
+  expect(puedeUsuario(u,'pacientes.escribir')).toBe(['AUXILIAR','ADMINISTRADOR'].includes(rol));
   expect(puedeUsuario(u,'muestras.procesar')).toBe(rol==='BACTERIOLOGO');
 });
 it('API antigua conserva política histórica y nunca infiere el perfil AUXILIAR',()=>{
@@ -108,7 +108,7 @@ it('bacteriólogo confirma firma clínica de trabajo ajeno',async()=>{
   await userEvent.click(screen.getByRole('button',{name:'Confirmar validación'}));
   await waitFor(()=>expect(resultadosApi.validar).toHaveBeenCalledExactlyOnceWith(20, fecha));
 });
-for(const rol of ['VALIDADOR','ADMINISTRADOR'] as const)it(`${rol} con política nueva consulta sin botón de firma`,async()=>{
+for(const rol of ['ADMINISTRADOR'] as const)it(`${rol} con política nueva consulta sin botón de firma`,async()=>{
   await abrirResultado(sesion(rol));expect(screen.queryByRole('button',{name:'Validar resultado'})).not.toBeInTheDocument();
   expect(screen.getByText('Su perfil permite consultar este resultado, pero no autoriza su firma.')).toBeInTheDocument();
 });
@@ -146,4 +146,8 @@ it('login usa las capacidades del servidor y no decodifica privilegios del token
   await waitFor(()=>expect(authApi.login).toHaveBeenCalled());
   expect(await screen.findByRole('link',{name:'Admisión de pacientes'})).toBeInTheDocument();
   expect(screen.queryByRole('link',{name:'Gestión de usuarios'})).not.toBeInTheDocument();
+});
+
+it('los perfiles heredados no tienen capacidades operativas hasta su asignación explícita',()=>{
+  for(const rol of ['RECEPCIONISTA','VALIDADOR'] as const)expect(autorizacionPara(rol,true).permisos).toEqual([]);
 });

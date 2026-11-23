@@ -8,10 +8,11 @@ export const usuarioIdSchema = idParamSchema.extend({
 });
 export const listarUsuariosSchema = paginacionSchema.extend({
   q: z.string().trim().max(120).default(''),
-  estado: z.enum(['todos', 'inactivos', 'activos']).default('todos'),
+  estado: z.enum(['todos', 'inactivos', 'activos', 'eliminados']).default('todos'),
 });
 // La acción solo cambia activo; rechaza intentos de cambiar roles o datos de perfil.
 export const activarUsuarioSchema = z.object({}).strict();
+export const asignarPerfilUsuarioSchema = z.object({ rol: z.enum(PERFILES_OPERATIVOS) }).strict();
 export const crearUsuarioSchema = camposRegistroSchema.extend({
   username: z.string().trim().toLowerCase().min(3, 'Use entre 3 y 40 caracteres').max(40)
     .regex(/^[a-z0-9][a-z0-9_.-]*$/, 'Use letras sin acentos, números, punto, guion o guion bajo; comience con letra o número'),

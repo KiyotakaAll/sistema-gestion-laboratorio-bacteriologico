@@ -8,3 +8,6 @@ dist
 *.tsbuildinfo
 # Archivo accidental
 /frontend/-la | grep -E 'env|vite|package'
+
+.local-activacion/
+docs/capturas/v020-*/

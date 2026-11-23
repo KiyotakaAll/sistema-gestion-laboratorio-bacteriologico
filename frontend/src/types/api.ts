@@ -30,6 +30,7 @@ export interface UsuarioResumen {
 export interface UsuarioAdministracion extends UsuarioSesion {
   email: string;
   activo: boolean;
+  eliminadoAt?: string | null;
   createdAt: string;
 }
 
@@ -125,6 +126,8 @@ export interface Examen {
   descripcion: string | null;
   precio: string;
   activo: boolean;
+  instruccionesToma?: string | null;
+  sitiosPermitidos?: string[] | null;
 }
 
 export interface ExamenResumen {
@@ -201,6 +204,8 @@ export interface SolicitudDetalle extends SolicitudBase {
   paciente: Paciente;
   registradoPor: UsuarioResumen;
   muestras: (MuestraBase & { examenes: { id: number; examen: ExamenResumen }[] })[];
+  examenesSolicitados?: { id: number; examenId: number; tipoMuestra: string; sitioAnatomicoId: number | null;
+    sitioAnatomico: string | null; instruccionesToma: string | null; examen: Examen }[];
 }
 
 export interface EventoTrazabilidad {
@@ -255,12 +260,14 @@ export interface NuevaSolicitud {
   medicoRemitenteId?: number | null;
   diagnosticoPresuntivo?: string;
   observaciones?: string;
+  examenesSolicitados?: import('../services/catalogos').ExamenSolicitadoEntrada[];
 }
 
 export interface NuevaMuestra {
   solicitudId: number;
   tipoMuestra: string;
   sitioAnatomico?: string;
+  sitioAnatomicoId?: number;
   fechaToma: string;
   examenIds: number[];
 }

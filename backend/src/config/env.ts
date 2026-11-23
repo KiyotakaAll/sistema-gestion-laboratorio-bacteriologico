@@ -21,6 +21,7 @@ const envSchema = z.object({
   PACIENTES_IDENTIFICACION_HABILITADA: z.enum(['true', 'false']).default('false').transform(v => v === 'true'),
   MEDICOS_REMITENTES_HABILITADOS: z.enum(['true', 'false']).default('false').transform(v => v === 'true'),
   PERMISOS_OPERATIVOS_HABILITADOS: z.enum(['true', 'false']).default('false').transform(v => v === 'true'),
+  ORDENES_ASISTIDAS_HABILITADAS: z.enum(['true', 'false']).default('false').transform(v => v === 'true'),
 });
 
 export type Env = z.infer<typeof envSchema>;

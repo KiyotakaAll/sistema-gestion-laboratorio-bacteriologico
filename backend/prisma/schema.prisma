@@ -26,6 +26,8 @@ model Usuario {
   nombreCompleto         String         @map("nombre_completo") @db.VarChar(120)
   passwordHash           String         @map("password_hash") @db.VarChar(255)
   activo                 Boolean        @default(true)
+  eliminadoAt            DateTime?      @map("eliminado_at") @db.DateTime(3)
+  versionSesion          Int            @default(0) @map("version_sesion") @db.UnsignedInt
   ultimoAcceso           DateTime?      @map("ultimo_acceso")
   createdAt              DateTime       @default(now()) @map("created_at")
   updatedAt              DateTime       @default(now()) @updatedAt @map("updated_at")
@@ -84,6 +86,7 @@ model Solicitud {
   createdAt             DateTime  @default(now()) @map("created_at")
   updatedAt             DateTime  @default(now()) @updatedAt @map("updated_at")
   muestras              Muestra[]
+  examenesSolicitados   SolicitudExamen[]
   paciente              Paciente  @relation(fields: [pacienteId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_solicitudes_paciente")
   registradoPor         Usuario   @relation(fields: [usuarioIdRegistra], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_solicitudes_usuario_registra")
 
@@ -122,10 +125,53 @@ model Examen {
   descripcion          String?         @db.VarChar(255)
   precio               Decimal         @default(0.00) @db.Decimal(10, 2)
   activo               Boolean         @default(true)
+  instruccionesToma    String?         @map("instrucciones_toma") @db.VarChar(1000)
+  sitiosPermitidos     Json?           @map("sitios_permitidos")
   muestraExamenes      MuestraExamen[]
+  solicitudesExamenes  SolicitudExamen[]
 
   @@index([nombre], map: "idx_examenes_nombre")
   @@map("examenes")
+}
+
+model SitioAnatomico {
+  id           Int      @id @default(autoincrement()) @db.UnsignedInt
+  nombre       String   @db.VarChar(80)
+  clave        String   @unique(map: "uq_sitios_clave") @db.VarChar(160)
+  tiposMuestra Json     @map("tipos_muestra")
+  activo       Boolean  @default(true)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at")
+  ordenes      SolicitudExamen[]
+  @@map("sitios_anatomicos")
+}
+
+model PlantillaExamenes {
+  id        Int      @id @default(autoincrement()) @db.UnsignedInt
+  nombre    String   @db.VarChar(80)
+  clave     String   @unique(map: "uq_plantillas_clave") @db.VarChar(160)
+  examenIds Json     @map("examen_ids")
+  activo    Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+  @@map("plantillas_examenes")
+}
+
+model SolicitudExamen {
+  id                Int      @id @default(autoincrement()) @db.UnsignedInt
+  solicitudId       Int      @map("solicitud_id") @db.UnsignedInt
+  examenId          Int      @map("examen_id") @db.UnsignedInt
+  tipoMuestra       String   @map("tipo_muestra") @db.VarChar(60)
+  sitioAnatomicoId  Int?     @map("sitio_anatomico_id") @db.UnsignedInt
+  sitioAnatomico    String?  @map("sitio_anatomico") @db.VarChar(80)
+  instruccionesToma String?  @map("instrucciones_toma") @db.VarChar(1000)
+  createdAt         DateTime @default(now()) @map("created_at")
+  solicitud         Solicitud @relation(fields: [solicitudId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  examen            Examen @relation(fields: [examenId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  sitio             SitioAnatomico? @relation(fields: [sitioAnatomicoId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  @@unique([solicitudId, examenId], map: "uq_solicitud_examen")
+  @@index([examenId], map: "idx_orden_examen")
+  @@index([sitioAnatomicoId], map: "idx_orden_sitio")
+  @@map("solicitudes_examenes")
 }
 
 model Muestra {

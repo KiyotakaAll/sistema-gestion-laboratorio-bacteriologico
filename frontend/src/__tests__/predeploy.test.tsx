@@ -43,10 +43,12 @@ describe('Registro público', () => {
     await u.keyboard('{Enter}');
     expect(screen.getByRole('heading', { name: 'Tu espacio de trabajo' })).toBeInTheDocument();
   });
-  it('valida campos, correo, longitud en bytes, complejidad y confirmación', () => {
+  it('valida campos, correo, longitud en bytes, claves comunes y confirmación sin exigir composición', () => {
     expect(validarRegistro(datos)).toEqual({});
-    for (const cambio of [{ nombreCompleto: '' }, { email: '' }, { email: 'invalido' }, { password: '123' }, { password: 'sinmayuscula!123' }, { password: 'SINMINUSCULA!123' }, { password: 'SinNumero!!!!' }, { password: 'SinSimbolos123' }, { password: 'Á'.repeat(40) + 'a1!' }, { confirmacion: 'otra' }])
+    for (const cambio of [{ nombreCompleto: '' }, { email: '' }, { email: 'invalido' }, { password: '123' }, { password: '12345678', confirmacion: '12345678' }, { password: 'Á'.repeat(40) + 'a1!' }, { confirmacion: 'otra' }])
       expect(Object.keys(validarRegistro({ ...datos, ...cambio })).length).toBeGreaterThan(0);
+    for (const password of ['calmaluz', 'sinmayuscula!123', 'SINMINUSCULA!123', 'SinNumero!!!!', 'SinSimbolos123', 'mi mesa tiene libros'])
+      expect(validarRegistro({ ...datos, password, confirmacion: password })).toEqual({});
   });
   it('no envía inválidos y enfoca el primer campo con error', async () => {
     abrir(); await userEvent.click(screen.getByRole('button', { name: 'Crear cuenta' }));

@@ -14,6 +14,8 @@ import { authApi, pacientesApi, solicitudesApi } from '../services/laboratorio';
 import type { MedicoRemitente } from '../types/medicos';
 import type { PacienteDetalle, RolNombre, SolicitudDetalle } from '../types/api';
 
+vi.mock('../services/catalogos', () => ({ catalogosApi: { flujo: vi.fn(async () => ({ habilitado: false, tiposMuestra: [], sitios: [], plantillas: [] })) } }));
+
 vi.mock('../services/medicos', () => ({ medicosApi: {
   capacidades: vi.fn(), listar: vi.fn(), obtener: vi.fn(), crear: vi.fn(), actualizar: vi.fn(), estado: vi.fn(), asignar: vi.fn(),
 } }));

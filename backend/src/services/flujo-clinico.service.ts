@@ -25,8 +25,8 @@ export async function transaccionClinica<T>(operacion: (tx: TxClient) => Promise
 export async function exigirPermisoClinico(tx: TxClient, ctx: AuditContext, permiso: Permiso) {
   await tx.$queryRaw`SELECT id FROM usuarios WHERE id = ${ctx.usuarioId} FOR SHARE`;
   const usuario = await tx.usuario.findUnique({ where: { id: ctx.usuarioId },
-    select: { activo: true, rol: { select: { nombre: true } } } });
-  if (!usuario?.activo || !esRolConocido(usuario.rol.nombre) || !puedeRol(usuario.rol.nombre, permiso)) {
+    select: { activo: true, eliminadoAt: true, rol: { select: { nombre: true } } } });
+  if (!usuario?.activo || usuario.eliminadoAt || !esRolConocido(usuario.rol.nombre) || !puedeRol(usuario.rol.nombre, permiso)) {
     throw new AppError(403, 'La cuenta vigente no autoriza esta operación clínica.',
       permiso === 'resultados.validar' ? 'FIRMA_PROFESIONAL_REQUERIDA' : 'PERMISO_CLINICO_REQUERIDO');
   }

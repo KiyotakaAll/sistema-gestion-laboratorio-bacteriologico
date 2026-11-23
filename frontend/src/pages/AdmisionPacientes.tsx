@@ -1,4 +1,5 @@
 import { IconoNuevo, IconoBuscar } from '../components/icons/LabZenIcon';
+import { DocumentoAcciones } from '../components/documentos/DocumentoAcciones';
 import { useMemo, useState } from 'react';
 import { PacienteDetalleModal } from '../components/admision/PacienteDetalleModal';
 import { PacienteFormModal } from '../components/admision/PacienteFormModal';
@@ -52,6 +53,7 @@ export default function AdmisionPacientes() {
         acciones={puedeEscribir ? <Button variante="primario" disabled={cargandoCapacidades || !!errorCapacidades || capacidades?.registroPacientes === false} icono={<IconoNuevo size={17} aria-hidden />} onClick={() => setRegistrando(true)}>Registrar paciente</Button> : undefined} />
       {puedeEscribir && (errorCapacidades || capacidades?.registroPacientes === false) &&
         <Alert>No se pudo confirmar la disponibilidad del registro. Vuelva a cargar la pantalla.</Alert>}
+      {puede('solicitudes.leer') && <div className="mb-4"><DocumentoAcciones clase="remision" /></div>}
       <DataTable titulo="Directorio de pacientes" descripcion="Selecciona un registro para consultar sus datos y solicitudes."
 
         columnas={columnas}

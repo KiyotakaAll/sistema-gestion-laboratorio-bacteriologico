@@ -7,7 +7,10 @@ import { useNavigate } from 'react-router-dom';
 import { useToast } from '../../context/ToastContext';
 import { useCarga } from '../../hooks/useCarga';
 import { detallesDeError, mensajeDeError, type DetalleCampo } from '../../services/api';
-import { pacientesApi, solicitudesApi } from '../../services/laboratorio';
+import { pacientesApi, solicitudesApi, examenesApi } from '../../services/laboratorio';
+import { catalogosApi, type ExamenSolicitadoEntrada } from '../../services/catalogos';
+import { ExamenesOrdenSelector } from './ExamenesOrdenSelector';
+import { DocumentoAcciones } from '../documentos/DocumentoAcciones';
 import type { PacienteDetalle, Prioridad } from '../../types/api';
 import { SEXO_ETIQUETA, formatEdad, formatFechaDia, formatFechaHora, nombrePaciente, opcional } from '../../utils/format';
 import { identificacionTexto } from '../../utils/identificacion';
@@ -62,12 +65,14 @@ export function PacienteDetalleModal({ pacienteId, puedeEscribir, puedeSolicitud
         accessor: () => null,
         align: 'right',
         cell: (s) =>
-          puedeSolicitudes || puedeRegistrarMuestras ? (
-            <div className="flex flex-wrap gap-2">{puedeSolicitudes && directorioMedicos && <Button tamano="sm" onClick={() => setRemitenteSolicitud(s.id)} aria-label={`Editar remitente de ${s.codigo}`}>Remitente</Button>}
+          (
+            <div className="flex flex-wrap gap-2"><DocumentoAcciones clase="orden" solicitudId={s.id} />
+            <DocumentoAcciones clase="informe" solicitudId={s.id} disabled={s._count.muestras === 0} />
+            {puedeSolicitudes && directorioMedicos && <Button tamano="sm" onClick={() => setRemitenteSolicitud(s.id)} aria-label={`Editar remitente de ${s.codigo}`}>Remitente</Button>}
             {puedeRegistrarMuestras && <Button tamano="sm" variante="fantasma" icono={<IconoMuestras className="h-3.5 w-3.5" aria-hidden />} onClick={() => navigate(`/recepcion?solicitudId=${s.id}`)}>
               Registrar muestra
             </Button>}</div>
-          ) : null,
+          ),
       },
     ],
     [puedeSolicitudes, puedeRegistrarMuestras, navigate, directorioMedicos],
@@ -167,7 +172,7 @@ export function PacienteDetalleModal({ pacienteId, puedeEscribir, puedeSolicitud
   );
 }
 
-function NuevaSolicitudForm({ directorioMedicos, pacienteId, onCancelar, onCreada, guardando, setGuardando }: {
+export function NuevaSolicitudForm({ directorioMedicos, pacienteId, onCancelar, onCreada, guardando, setGuardando }: {
   pacienteId: number;
   directorioMedicos: boolean;
   onCancelar: () => void;
@@ -182,6 +187,10 @@ function NuevaSolicitudForm({ directorioMedicos, pacienteId, onCancelar, onCread
   const [observaciones, setObservaciones] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [detalles, setDetalles] = useState<DetalleCampo[]>([]);
+  const catalogo = useCarga(() => catalogosApi.flujo(), []);
+  const asistida = catalogo.datos?.habilitado === true;
+  const examenes = useCarga(() => asistida ? examenesApi.listar() : Promise.resolve([]), [asistida]);
+  const [seleccion, setSeleccion] = useState<ExamenSolicitadoEntrada[]>([]);
 
   async function enviar(evento: FormEvent<HTMLFormElement>) {
     evento.preventDefault();
@@ -195,6 +204,7 @@ function NuevaSolicitudForm({ directorioMedicos, pacienteId, onCancelar, onCread
         ...(directorioMedicos && medicoId !== null ? { medicoRemitenteId: medicoId } : { medicoSolicitante: opcional(medico) }),
         diagnosticoPresuntivo: opcional(diagnostico),
         observaciones: opcional(observaciones),
+        ...(asistida ? { examenesSolicitados: seleccion } : {}),
       });
       setGuardando(false);
       onCreada(solicitud.codigo);
@@ -212,6 +222,7 @@ function NuevaSolicitudForm({ directorioMedicos, pacienteId, onCancelar, onCread
           <Alert detalles={detalles}>{error}</Alert>
         </div>
       )}
+      {catalogo.error && <div className="md:col-span-3"><Alert>{catalogo.error}</Alert></div>}
       <Campo etiqueta="Prioridad">
         <Select value={prioridad} onValueChange={(value) => setPrioridad(value as Prioridad)}>
           <option value="RUTINA">Rutina</option>
@@ -221,6 +232,7 @@ function NuevaSolicitudForm({ directorioMedicos, pacienteId, onCancelar, onCread
       <Campo etiqueta="Médico solicitante">
         <Input maxLength={120} disabled={guardando || (directorioMedicos && medicoId !== null)} value={medico} onChange={(e) => setMedico(e.target.value)} />
       </Campo>
+      <p className="text-xs text-muted md:col-span-3">Seleccione el médico del directorio o escriba el nombre del remitente externo, si se proporciona.</p>
       {directorioMedicos && <div className="md:col-span-2"><MedicoSelector value={medicoId} onChange={setMedicoId} disabled={guardando} /></div>}
       <Campo etiqueta="Diagnóstico presuntivo">
         <Input value={diagnostico} onChange={(e) => setDiagnostico(e.target.value)} />
@@ -228,11 +240,18 @@ function NuevaSolicitudForm({ directorioMedicos, pacienteId, onCancelar, onCread
       <Campo etiqueta="Observaciones" className="md:col-span-3">
         <Textarea value={observaciones} onChange={(e) => setObservaciones(e.target.value)} rows={2} />
       </Campo>
+      {asistida && catalogo.datos && <div className="md:col-span-3">
+        {examenes.error && <Alert>{examenes.error}</Alert>}
+        <ExamenesOrdenSelector examenes={examenes.datos ?? []} catalogo={catalogo.datos}
+          value={seleccion} onChange={setSeleccion} disabled={guardando || examenes.cargando}
+          onCatalogoCambio={catalogo.recargar} />
+      </div>}
       <div className="flex flex-wrap items-center justify-end gap-3 border-t border-line pt-4 md:col-span-3">
         <Button onClick={onCancelar} disabled={guardando}>
           Cancelar
         </Button>
-        <Button type="submit" variante="primario" cargando={guardando}>
+        <Button type="submit" variante="primario" cargando={guardando}
+          disabled={catalogo.cargando || !!catalogo.error || (asistida && (!seleccion.length || seleccion.some(i => !i.tipoMuestra) || !!examenes.error))}>
           Crear solicitud
         </Button>
       </div>

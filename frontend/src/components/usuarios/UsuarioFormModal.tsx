@@ -18,6 +18,7 @@ export function UsuarioFormModal({ roles, onCerrar, onCreado }: {
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [detalles, setDetalles] = useState<DetalleCampo[]>([]);
+  const [visibles, setVisibles] = useState({ password: false, confirmacion: false });
   const bloqueo = useRef(false);
 
   async function enviar(evento: FormEvent) {
@@ -37,6 +38,7 @@ export function UsuarioFormModal({ roles, onCerrar, onCreado }: {
         nombreCompleto: datos.nombreCompleto.trim(), username: datos.username.trim().toLowerCase(), email: datos.email.trim().toLowerCase(),
       });
       setDatos(prev => ({ ...prev, password: '', confirmacion: '' }));
+      setVisibles({ password: false, confirmacion: false });
       onCreado(usuario);
     } catch (err) {
       setError(mensajeDeError(err)); setDetalles(detallesDeError(err));
@@ -52,14 +54,22 @@ export function UsuarioFormModal({ roles, onCerrar, onCreado }: {
           ['nombreCompleto', 'Nombre completo', 'text', 120, 'name'],
           ['username', 'Nombre de usuario', 'text', 40, 'off'],
           ['email', 'Correo electrónico', 'email', 120, 'off'],
-          ['password', 'Contraseña inicial', 'password', 72, 'new-password'],
-          ['confirmacion', 'Confirmar contraseña', 'password', 72, 'new-password'],
-        ] as const).map(([campo, etiqueta, tipo, max, autoComplete]) =>
+          ['password', 'Contraseña inicial', 'password', undefined, 'new-password'],
+          ['confirmacion', 'Confirmar contraseña', 'password', undefined, 'new-password'],
+        ] as const).map(([campo, etiqueta, tipo, max, autoComplete]) => {
+          const secreto = campo === 'password' || campo === 'confirmacion';
+          const visible = secreto && visibles[campo];
+          return (
           <Campo key={campo} etiqueta={etiqueta} ayuda={campo === 'password' ? REGLA_PASSWORD : campo === 'username' ? 'De 3 a 40 caracteres, sin espacios ni @.' : undefined}>
-            <Input type={tipo} autoComplete={autoComplete} required maxLength={max} value={datos[campo]} disabled={guardando}
+            <Input type={secreto && visible ? 'text' : tipo} autoComplete={autoComplete} required maxLength={secreto ? undefined : max} value={datos[campo]} disabled={guardando}
               aria-invalid={detalles.some(d => d.campo === campo)}
               onChange={e => setDatos(prev => ({ ...prev, [campo]: e.target.value }))} />
-          </Campo>)}
+            {secreto && <Button tamano="sm" variante="fantasma" disabled={guardando}
+              aria-pressed={visible} onClick={() => setVisibles(prev => ({ ...prev, [campo]: !prev[campo] }))}>
+              {visible ? 'Ocultar' : 'Mostrar'} {campo === 'password' ? 'contraseña inicial' : 'confirmación'}
+            </Button>}
+          </Campo>);
+        })}
         <Campo etiqueta="Perfil operativo" ayuda={!roles.includes('AUXILIAR') ? 'El perfil auxiliar aún no está disponible.' : undefined}>
           <Select value={datos.rol} disabled={guardando} onValueChange={value => {
             if ((value === 'AUXILIAR' || value === 'BACTERIOLOGO') && roles.includes(value)) setDatos(prev => ({ ...prev, rol: value }));

@@ -3,10 +3,25 @@
 -- Requiere MySQL 8.4, respaldo RESTAURADO de prueba, ventana sin escrituras,
 -- inventario de FK/índices y los nueve CHECK originales, y revisión del README.
 -- DDL realiza commits implícitos. No hay rollback global de este archivo.
--- Precondición a comprobar manualmente: cedula VARCHAR(20) utf8mb4_unicode_ci,
+-- Precondición a comprobar manualmente: cedula VARCHAR(20) NOT NULL utf8mb4,
 -- id INT UNSIGNED, InnoDB, sql_mode estricto y ausencia de columnas nuevas.
 -- NO cambia id, FK, índices existentes ni los nueve CHECK clínicos.
 -- Mantener PACIENTES_IDENTIFICACION_HABILITADA=false hasta verificar todo.
+
+-- Capturar y validar la definición efectiva ANTES del primer cambio. PREPARE
+-- falla si no coincide el tipo/charset esperado (la expresión resulta NULL).
+-- La collation procede exclusivamente de metadatos, no de entrada del usuario.
+-- Conservarla evita cambiar la unicidad/comparación de cédulas históricas.
+SET @labzen_ident_cedula_ddl = (
+  SELECT CONCAT('ALTER TABLE pacientes MODIFY COLUMN cedula VARCHAR(20) ',
+    'CHARACTER SET utf8mb4 COLLATE `', COLLATION_NAME, '` NULL')
+  FROM information_schema.COLUMNS
+  WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'pacientes'
+    AND COLUMN_NAME = 'cedula' AND COLUMN_TYPE = 'varchar(20)'
+    AND CHARACTER_SET_NAME = 'utf8mb4' AND IS_NULLABLE = 'NO'
+    AND COLLATION_NAME REGEXP '^utf8mb4_[a-zA-Z0-9_]+$'
+);
+PREPARE labzen_ident_cedula_nullable FROM @labzen_ident_cedula_ddl;
 
 ALTER TABLE pacientes
   ADD COLUMN estado_identificacion VARCHAR(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_bin NULL DEFAULT 'LEGADO_POR_REVISAR',
@@ -77,10 +92,10 @@ ALTER TABLE pacientes
   )) IS TRUE);
 
 -- Solo después de comprobar el CHECK de LEGADO y los originales.
--- Conserva explícitamente la definición histórica declarada; detenerse si
--- la inspección efectiva muestra otra collation/tipo (no convertir históricos).
-ALTER TABLE pacientes MODIFY COLUMN cedula VARCHAR(20)
-  CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL;
+-- Cambia únicamente la nulabilidad; conserva la collation histórica capturada.
+EXECUTE labzen_ident_cedula_nullable;
+DEALLOCATE PREPARE labzen_ident_cedula_nullable;
+SET @labzen_ident_cedula_ddl = NULL;
 
 -- Verificaciones posteriores (solo lectura; comparar con respaldo/inventario).
 SELECT COUNT(*) AS pacientes, SUM(estado_identificacion = 'LEGADO_POR_REVISAR') AS legado,

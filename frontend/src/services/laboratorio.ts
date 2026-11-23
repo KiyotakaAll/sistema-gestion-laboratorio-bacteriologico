@@ -50,10 +50,16 @@ export const usuariosApi = {
   capacidades: () => api.get<{ data: { roles: PerfilOperativo[] } }>('/usuarios/capacidades').then(datos),
   crear: (cuerpo: NuevoUsuarioAdministrativo) =>
     api.post<{ data: UsuarioAdministracion }>('/usuarios', cuerpo).then(datos),
-  listar: (params: Paginacion & { q?: string; estado?: 'todos' | 'inactivos' | 'activos' }) =>
+  listar: (params: Paginacion & { q?: string; estado?: 'todos' | 'inactivos' | 'activos' | 'eliminados' }) =>
     api.get<Paginado<UsuarioAdministracion>>('/usuarios', { params }).then(pagina),
   activar: (id: number) =>
-    api.patch<{ data: { id: number; activo: true } }>(`/usuarios/${id}/activar`, {}).then(datos),
+    api.patch<{ data: { id: number; activo: boolean; eliminadoAt: string | null } }>(`/usuarios/${id}/activar`, {}).then(datos),
+  desactivar: (id: number) =>
+    api.patch<{ data: { id: number; activo: boolean; eliminadoAt: string | null } }>(`/usuarios/${id}/desactivar`, {}).then(datos),
+  eliminar: (id: number) =>
+    api.delete<{ data: { id: number; activo: boolean; eliminadoAt: string } }>(`/usuarios/${id}`).then(datos),
+  asignarPerfil: (id: number, rol: PerfilOperativo) =>
+    api.patch<{ data: { id: number; activo: boolean; rol: PerfilOperativo } }>(`/usuarios/${id}/perfil`, { rol }).then(datos),
 };
 
 export const pacientesApi = {
@@ -69,7 +75,7 @@ export const pacientesApi = {
 };
 
 export const solicitudesApi = {
-  listar: (params: Paginacion & { pacienteId?: number; cedula?: string; prioridad?: Prioridad }) =>
+  listar: (params: Paginacion & { pacienteId?: number; cedula?: string; q?: string; prioridad?: Prioridad }) =>
     api.get<Paginado<SolicitudLista>>('/solicitudes', { params }).then(pagina),
   obtener: (id: number) => api.get<{ data: SolicitudDetalle }>(`/solicitudes/${id}`).then(datos),
   crear: (cuerpo: NuevaSolicitud) =>

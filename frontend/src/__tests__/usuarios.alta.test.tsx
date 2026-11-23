@@ -64,7 +64,7 @@ it('crea cuenta pendiente, limpia el modal y refresca el listado sin cambiar la 
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   await waitFor(() => expect(usuariosApi.listar).toHaveBeenCalledTimes(llamadas + 1));
   const fila = screen.getByText(nueva.email).closest('tr')!;
-  expect(within(fila).getByText('Pendiente / inactivo')).toBeInTheDocument();
+  expect(within(fila).getByText('Inactivo')).toBeInTheDocument();
   expect(within(fila).getByRole('button', { name: 'Activar usuario: Persona Nueva' })).toBeEnabled();
   expect(authApi.login).not.toHaveBeenCalled(); expect(localStorage.getItem('lab_token')).toBe('token-ficticio');
   expect(document.querySelector('input[type="password"]')).not.toBeInTheDocument();

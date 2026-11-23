@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { errorPasswordNueva } from '../domain/password';
 
 export const loginSchema = z.object({
   username: z.string().trim().min(1, 'Ingrese su usuario o correo').max(120),
@@ -12,10 +13,11 @@ export type LoginInput = z.infer<typeof loginSchema>;
 export const camposRegistroSchema = z.object({
   nombreCompleto: z.string().trim().min(3, 'Ingrese su nombre completo').max(120),
   email: z.string().trim().toLowerCase().email('Ingrese un correo válido').max(120),
-  password: z.string().min(12, 'Use al menos 12 caracteres')
-    .regex(/[a-z]/, 'Incluya una minúscula').regex(/[A-Z]/, 'Incluya una mayúscula')
-    .regex(/[0-9]/, 'Incluya un número').regex(/[^A-Za-z0-9\s]/, 'Incluya un símbolo')
-    .refine((v) => Buffer.byteLength(v, 'utf8') <= 72, 'Use como máximo 72 bytes'),
+  password: z.string({ required_error: 'Ingrese una contraseña', invalid_type_error: 'Ingrese una contraseña como texto' })
+    .superRefine((valor, ctx) => {
+      const mensaje = errorPasswordNueva(valor);
+      if (mensaje) ctx.addIssue({ code: z.ZodIssueCode.custom, message: mensaje });
+    }),
   confirmacion: z.string(),
 }).strict();
 

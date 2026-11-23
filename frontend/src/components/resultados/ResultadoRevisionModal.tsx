@@ -1,4 +1,5 @@
 import { permiteResultado } from '../../../../backend/src/domain/flujo-clinico';
+import { DocumentoAcciones } from '../documentos/DocumentoAcciones';
 import { identificacionTexto } from '../../utils/identificacion';
 import { IconoValidacion, IconoCompletado } from '../icons/LabZenIcon';
 import { useRef, useState } from 'react';
@@ -77,7 +78,8 @@ export function ResultadoRevisionModal({ resultado: inicial, usuarioActualId, pu
       titulo={examen.nombre}
       subtitulo={<EstadoResultadoBadge estado={resultado.estado} />}
       onCerrar={() => { if (!validando) onCerrar(); }}
-      pie={<Button onClick={onCerrar} disabled={validando}>Cerrar</Button>}
+      pie={<><Button onClick={onCerrar} disabled={validando}>Cerrar</Button>
+        <DocumentoAcciones clase="informe" solicitudId={muestra.solicitudId} disabled={!validado || validando} /></>}
     >
       <Datos columnas={4}>
         <Dato etiqueta="Paciente" className="col-span-2">

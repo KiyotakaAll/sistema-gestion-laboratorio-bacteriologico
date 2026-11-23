@@ -4,7 +4,8 @@ import type { TxClient } from '../types/dto';
 
 /** Solo admite la forma IN del CHECK preparado en 3.1; cualquier variante desconocida falla cerrada. */
 function checkAuxiliarPreparado(clausula: string): boolean {
-  const normalizada = clausula.replace(/`/g, '').replace(/_(?:utf8mb4|utf8mb3|utf8|ascii|latin1)(?=')/gi, '')
+  // MySQL 8.4 puede devolver los delimitadores de literales como \' en CHECK_CLAUSE.
+  const normalizada = clausula.replace(/\\'/g, "'").replace(/`/g, '').replace(/_(?:utf8mb4|utf8mb3|utf8|ascii|latin1)(?=')/gi, '')
     .replace(/'[^']*'|\s+/g, token => token.startsWith("'") ? token : '').toUpperCase();
   if (!/^\(*NOMBREIN\('[A-Z_]+'(?:,'[A-Z_]+')*\)\)*$/.test(normalizada)) return false;
   return normalizada.match(/'([A-Z_]+)'/g)?.includes("'AUXILIAR'") === true;

@@ -44,7 +44,7 @@ for (const [modulo,nombres] of Object.entries({
   orden:['listar','obtener','crear','examenes','actualizarRemitente'],
   medico:['capacidades','listar','obtener','crear','actualizar','estado'],
   muestra:['listar','obtenerPorCodigoBarras','obtener','trazabilidad','registrar','receptar','procesar','rechazar'],
-  usuario:['listar','activar','capacidades','crear'],
+  usuario:['listar','activar','desactivar','eliminar','asignarPerfil','capacidades','crear'],
 })) sustituir('../src/controllers/'+modulo+'.controller.ts',Object.fromEntries(nombres.map(n=>[n,centinela])));
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
@@ -107,10 +107,10 @@ for(const activa of [false,true])for(const rol of politica.ROLES)test(`rutas dir
   env.PERMISOS_OPERATIVOS_HABILITADOS=activa;cuenta.rol.nombre=rol;
   const permisos=activa&&rol==='AUXILIAR'?esperados.RECEPCIONISTA:[...(esperados[rol]??[])];
   if(activa&&rol==='BACTERIOLOGO')permisos.push('resultados.validar');
-  if(activa&&rol==='VALIDADOR')permisos.splice(permisos.indexOf('resultados.validar'),1);
+  if(activa&&['RECEPCIONISTA','VALIDADOR'].includes(rol))permisos.splice(0);
   for(const [mod,method,url,permiso] of rutas){
     const r=await request(mod,method,url,rol);
-    const esperado=rol==='AUXILIAR'&&!activa?401:permisos.includes(permiso)?200:403;
+    const esperado=(rol==='AUXILIAR'&&!activa)||(activa&&['RECEPCIONISTA','VALIDADOR'].includes(rol))?401:permisos.includes(permiso)?200:403;
     assert.equal(r.status,esperado,`${method} ${mod}${url}, ${permiso}`);
   }
 });
@@ -129,16 +129,17 @@ test('las proyecciones de muestras ocultan hallazgos clínicos a AUXILIAR tambi�
   for(const rol of politica.ROLES){
     await obtenerMuestraPorId(3,rol);
     const incluye=Object.hasOwn(consultaMuestra.include.examenes.include,'resultado');
-    assert.equal(incluye,['BACTERIOLOGO','VALIDADOR','ADMINISTRADOR'].includes(rol));
+    assert.equal(incluye,['BACTERIOLOGO','ADMINISTRADOR'].includes(rol));
   }
 });
 for(const [mod,method,url] of rutas)test('sin JWT no accede a '+mod+' '+method+' '+url,async()=>{
   env.PERMISOS_OPERATIVOS_HABILITADOS=true;
   assert.equal((await request(mod,method,url,null)).status,401);assert.deepEqual(consultas,[]);assert.deepEqual(cambios,[]);
 });
-test('modo histórico acepta JWT anterior sin consultas adicionales ni columnas nuevas',async()=>{
+test('modo histórico comprueba estado vigente incluso con JWT anterior',async()=>{
+  cuenta.rol.nombre='RECEPCIONISTA';
   assert.equal((await request('paciente','POST','/','RECEPCIONISTA')).status,200);
-  assert.deepEqual(consultas,[]);
+  assert.deepEqual(consultas,['usuario']);
 });
 test('activar o apagar la política obliga a renovar JWT y evita ampliar una sesión antigua',async()=>{
   const antiguo=token('BACTERIOLOGO');env.PERMISOS_OPERATIVOS_HABILITADOS=true;cuenta.rol.nombre='BACTERIOLOGO';

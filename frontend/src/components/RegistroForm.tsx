@@ -58,7 +58,7 @@ export function RegistroForm() {
           <div className={secreto ? 'passwrap' : ''}>
             <input id={`registro-${campo}`} name={campo} type={secreto ? (visible ? 'text' : 'password') : campo === 'email' ? 'email' : 'text'}
               value={datos[campo]} onChange={(e) => setDatos((actual) => ({ ...actual, [campo]: e.target.value }))}
-              autoComplete={autocomplete} required disabled={enviando} maxLength={campo === 'nombreCompleto' || campo === 'email' ? 120 : 72}
+              autoComplete={autocomplete} required disabled={enviando} maxLength={secreto ? undefined : 120}
               aria-invalid={!!errores[campo]} aria-describedby={`${campo === 'password' ? 'registro-password-ayuda ' : ''}${errores[campo] ? `registro-${campo}-error` : ''}`.trim() || undefined}
               className="public-input" />
             {secreto && <button type="button" className="public-password-toggle" disabled={enviando}

@@ -99,9 +99,9 @@ beforeEach(() => {
 const esperadoError = (status, code) => e => e.statusCode === status && (!code || e.code === code);
 const estados = ['REGISTRADA', 'RECEPTADA', 'EN_PROCESAMIENTO', 'PROCESADA', 'RECHAZADA'];
 const acciones = {
-  RECEPTAR: { desde: ['REGISTRADA'], rol: 'RECEPCIONISTA', hasta: 'RECEPTADA', fn: () => muestras.receptarMuestra(3, ctx, 'RECEPCIONISTA') },
+  RECEPTAR: { desde: ['REGISTRADA'], rol: 'AUXILIAR', hasta: 'RECEPTADA', fn: () => muestras.receptarMuestra(3, ctx, 'AUXILIAR') },
   INICIAR_PROCESAMIENTO: { desde: ['RECEPTADA'], rol: 'BACTERIOLOGO', hasta: 'EN_PROCESAMIENTO', fn: () => muestras.iniciarProcesamiento(3, ctx, 'BACTERIOLOGO') },
-  RECHAZAR: { desde: ['REGISTRADA', 'RECEPTADA'], rol: 'RECEPCIONISTA', hasta: 'RECHAZADA', fn: () => muestras.rechazarMuestra(3, 'Volumen insuficiente', ctx, 'RECEPCIONISTA') },
+  RECHAZAR: { desde: ['REGISTRADA', 'RECEPTADA'], rol: 'AUXILIAR', hasta: 'RECHAZADA', fn: () => muestras.rechazarMuestra(3, 'Volumen insuficiente', ctx, 'AUXILIAR') },
 };
 for (const [accion, regla] of Object.entries(acciones)) for (const estado of estados) {
   test(`${accion}: muestra ${estado}`, async () => {
@@ -227,7 +227,7 @@ for (const cambio of ['inactiva', 'eliminada', 'rol revocado']) test(`no confía
   db.muestra.estado = 'RECEPTADA';
   if (cambio === 'inactiva') db.cuenta.activo = false;
   if (cambio === 'eliminada') db.cuenta = null;
-  if (cambio === 'rol revocado') db.cuenta.rol.nombre = 'RECEPCIONISTA';
+  if (cambio === 'rol revocado') db.cuenta.rol.nombre = 'AUXILIAR';
   await assert.rejects(muestras.iniciarProcesamiento(3, ctx, 'BACTERIOLOGO'), esperadoError(403)); assert.equal(db.logs.length, 0);
 });
 test('conserva referencias históricas y no consulta nuevas columnas/tablas', async () => {
@@ -272,7 +272,7 @@ test('Zod no permite corrección sin versión ni hallazgos', () => {
 });
 
 test('dos recepciones concurrentes solo registran la transición ganadora', async () => {
-  db.muestra.estado = 'REGISTRADA'; db.cuenta.rol.nombre = 'RECEPCIONISTA';
+  db.muestra.estado = 'REGISTRADA'; db.cuenta.rol.nombre = 'AUXILIAR';
   // Dos recepciones contra la misma versión de estado; rechazo de RECEPTADA sigue siendo un paso posterior legal.
   const respuestas = await Promise.allSettled([acciones.RECEPTAR.fn(), acciones.RECEPTAR.fn()]);
   assert.deepEqual(respuestas.map(r => r.status), ['fulfilled', 'rejected']);
@@ -285,7 +285,7 @@ test('inicio de procesamiento ganador impide rechazo simultáneo', async () => {
   assert.equal(db.muestra.estado, 'EN_PROCESAMIENTO'); assert.equal(db.logs.length, 1);
 });
 test('CAS perdedor en recepción no produce fecha, usuario ni auditoría', async () => {
-  db.muestra.estado = 'REGISTRADA'; db.cuenta.rol.nombre = 'RECEPCIONISTA'; perderCAS = 'muestra';
+  db.muestra.estado = 'REGISTRADA'; db.cuenta.rol.nombre = 'AUXILIAR'; perderCAS = 'muestra';
   const antes = copiar(db); await assert.rejects(acciones.RECEPTAR.fn(), esperadoError(409)); assert.deepEqual(db, antes);
 });
 test('reemplazo de antibiograma fallido conserva todas las filas originales', async () => {

@@ -86,5 +86,6 @@ export async function medicoActivoParaSolicitud(tx: TxClient, id: number) {
   const medico = filas[0];
   if (!medico) throw new AppError(404, 'El médico no existe.', 'MEDICO_NO_ENCONTRADO');
   if (!medico.activo) throw new AppError(409, 'El médico está inactivo. Seleccione otro registro.', 'MEDICO_INACTIVO');
-  return { medicoRemitenteId: medico.id, medicoRemitenteNombre: `${medico.nombres} ${medico.apellidos}` };
+  // $queryRaw puede devolver INT UNSIGNED como bigint; el ID buscado ya es UInt32 validado.
+  return { medicoRemitenteId: id, medicoRemitenteNombre: `${medico.nombres} ${medico.apellidos}` };
 }

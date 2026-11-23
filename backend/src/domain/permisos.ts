@@ -10,7 +10,7 @@ export const PERMISOS = [
   'medicos.leer', 'medicos.escribir', 'examenes.leer', 'muestras.leer',
   'muestras.registrar', 'muestras.receptar', 'muestras.procesar', 'muestras.rechazar',
   'resultados.worklist', 'resultados.leer', 'resultados.escribir', 'resultados.validar',
-  'usuarios.administrar',
+  'usuarios.administrar', 'informes.descargar',
 ] as const;
 export type Permiso = (typeof PERMISOS)[number];
 export type VersionPolitica = 'historica-v1' | 'operativa-v1';
@@ -21,7 +21,7 @@ export interface Autorizacion {
 }
 
 const comunes: readonly Permiso[] = ['panel.ver', 'configuracion.ver', 'pacientes.leer', 'solicitudes.leer',
-  'medicos.leer', 'examenes.leer', 'muestras.leer'];
+  'medicos.leer', 'examenes.leer', 'muestras.leer', 'informes.descargar'];
 const auxiliar: readonly Permiso[] = [...comunes, 'admision.acceder', 'recepcion.acceder', 'pacientes.escribir',
   'solicitudes.escribir', 'medicos.escribir', 'muestras.registrar', 'muestras.receptar', 'muestras.rechazar'];
 const profesional: readonly Permiso[] = [...comunes, 'recepcion.acceder', 'muestras.procesar', 'muestras.rechazar',
@@ -33,20 +33,22 @@ const historica: Record<RolNombre, readonly Permiso[]> = {
 };
 const operativa: Record<RolNombre, readonly Permiso[]> = {
   AUXILIAR: auxiliar, BACTERIOLOGO: [...profesional, 'resultados.validar'],
-  // Adaptadores temporales: no convierten cuentas ni otorgan administración/procesamiento nuevos.
-  RECEPCIONISTA: historica.RECEPCIONISTA, ADMINISTRADOR: historica.ADMINISTRADOR,
-  VALIDADOR: [...comunes, 'resultados.leer'],
+  // Identidades históricas conservadas: requieren asignación explícita antes de operar.
+  RECEPCIONISTA: [], ADMINISTRADOR: historica.ADMINISTRADOR,
+  VALIDADOR: [],
 };
 export function esRolConocido(rol: string): rol is RolNombre { return ROLES.some(r => r === rol); }
 export function rolHabilitado(rol: string, nuevaPolitica: boolean): boolean {
-  return esRolConocido(rol) && (nuevaPolitica || rol !== 'AUXILIAR');
+  return esRolConocido(rol) && (nuevaPolitica
+    ? rol === 'ADMINISTRADOR' || PERFILES_OPERATIVOS.some(perfil => perfil === rol)
+    : rol !== 'AUXILIAR');
 }
 export function autorizacionPara(rol: string, nuevaPolitica = false): Autorizacion {
   const permisos = esRolConocido(rol) ? (nuevaPolitica ? operativa : historica)[rol] : [];
   return {
     politica: nuevaPolitica ? 'operativa-v1' : 'historica-v1',
     perfilOperativo: nuevaPolitica
-      ? rol === 'BACTERIOLOGO' ? 'BACTERIOLOGO' : rol === 'AUXILIAR' || rol === 'RECEPCIONISTA' ? 'AUXILIAR' : null
+      ? rol === 'BACTERIOLOGO' ? 'BACTERIOLOGO' : rol === 'AUXILIAR' ? 'AUXILIAR' : null
       : null,
     permisos: Object.freeze([...permisos]),
   };

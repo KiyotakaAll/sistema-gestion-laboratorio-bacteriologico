@@ -56,7 +56,7 @@ export async function iniciarSesion(input: LoginInput, ip: string | null): Promi
     throw credencialesInvalidas();
   }
 
-  if (!coincide || !usuario.activo) {
+  if (!coincide || !usuario.activo || usuario.eliminadoAt) {
     // Se audita el intento fallido de un usuario real (entidad_id no admite NULL).
     await prisma.$transaction(async (tx) => {
       await registrarLog(tx, {
@@ -71,9 +71,12 @@ export async function iniciarSesion(input: LoginInput, ip: string | null): Promi
     throw credencialesInvalidas();
   }
 
-  const rol = validarRol(usuario.rol.nombre);
-
-  await prisma.$transaction(async (tx) => {
+  const vigente = await prisma.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT id FROM usuarios WHERE id = ${usuario.id} FOR UPDATE`;
+    const actual = await tx.usuario.findUnique({ where: { id: usuario.id }, include: { rol: { select: { nombre: true } } } });
+    if (!actual?.activo || actual.eliminadoAt || actual.passwordHash !== usuario.passwordHash)
+      throw credencialesInvalidas();
+    const rol = validarRol(actual.rol.nombre);
     await tx.usuario.update({ where: { id: usuario.id }, data: { ultimoAcceso: new Date() } });
     await registrarLog(tx, {
       usuarioId: usuario.id,
@@ -82,10 +85,13 @@ export async function iniciarSesion(input: LoginInput, ip: string | null): Promi
       accion: 'LOGIN',
       ip,
     });
+    return { usuario: actual, rol };
   });
+  const rol = vigente.rol;
 
   const token = jwt.sign(
-    { sub: String(usuario.id), username: usuario.username, nombre: usuario.nombreCompleto, rol,
+    { sub: String(vigente.usuario.id), username: vigente.usuario.username, nombre: vigente.usuario.nombreCompleto, rol,
+      sesion: vigente.usuario.versionSesion ?? 0,
       ...(politicaOperativaActiva() ? { politica: 'operativa-v1' } : {}),
     },
     env.JWT_SECRET,
@@ -104,7 +110,7 @@ export async function obtenerPerfil(usuarioId: number): Promise<AuthenticatedUse
     where: { id: usuarioId },
     include: { rol: { select: { nombre: true } } },
   });
-  if (!usuario || !usuario.activo) {
+  if (!usuario || !usuario.activo || usuario.eliminadoAt) {
     throw new AppError(401, 'La sesión ya no es válida.', 'SESION_INVALIDA');
   }
   return {

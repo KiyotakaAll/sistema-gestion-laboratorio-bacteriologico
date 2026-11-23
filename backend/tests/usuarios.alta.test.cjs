@@ -143,6 +143,28 @@ test('normaliza nombre, username y correo sin alterar contraseña', () => {
   const r = crearUsuarioSchema.parse({ ...input, nombreCompleto: '  Persona Nueva  ', username: ' PERSONA.NUEVA ', email: ' PERSONA@EXAMPLE.TEST ' });
   assert.equal(r.nombreCompleto, input.nombreCompleto); assert.equal(r.username, input.username); assert.equal(r.email, input.email); assert.equal(r.password, input.password);
 });
+for (const [caso, password] of [['ocho caracteres', 'calmaluz'], ['sin símbolos', 'CASCADAS'],
+  ['frase con Unicode y espacios', '  mi café mira al mar  '], ['72 bytes Unicode', 'á'.repeat(36)]]) {
+  test(`alta administrativa con ${caso}: hash real, cuenta inactiva y sin secretos en auditoría`, async () => {
+    const anterior = structuredClone(cuentas.get(7));
+    const r = await alta({ ...input, password, confirmacion: password });
+    assert.equal(r.status, 201);assert.equal(r.body.data.activo, false);
+    const hash = cuentas.get(42).passwordHash;
+    assert.equal(await bcrypt.compare(password, hash), true);
+    assert.deepEqual(cuentas.get(7), anterior);
+    for (const sensible of [password, hash, 'passwordHash', 'confirmacion']) {
+      assert.ok(!JSON.stringify(r).includes(sensible)); assert.ok(!JSON.stringify(logs).includes(sensible));
+    }
+  });
+}
+for (const [caso, password, mensaje] of [['corta','calmalu','8 caracteres'],['común','12345678','demasiado común'],
+  ['larga UTF-8','🔬'.repeat(19),'72 bytes UTF-8']]) {
+  test(`alta rechaza contraseña ${caso} antes de calcular hash`, async () => {
+    const r=await alta({...input,password,confirmacion:password});assert.equal(r.status,400);
+    assert.equal(hashes,0);assert.equal(escrituras.length,0);assert.equal(logs.length,0);
+    assert.ok(r.body.error.details.some(d=>d.campo==='password'&&d.mensaje.includes(mensaje)));
+  });
+}
 for (const rol of ['BACTERIOLOGO', 'AUXILIAR']) test(`crea ${rol} inactivo, hash bcrypt real, selección segura y auditoría atómica`, async () => {
   if (rol === 'AUXILIAR') prepararAuxiliar();
   const anterior = structuredClone(cuentas.get(7)); const r = await alta({ ...input, rol });
@@ -219,7 +241,9 @@ for (const operativa of [false, true]) test(`alta → login bloqueado → activa
 test('registro público sigue bloqueado en modo nuevo incluso con JWT administrativo', async () => {
   prepararAuxiliar();
   const { rol, username, ...publico } = input;
-  for (const sesion of [null, token()]) assert.equal((await request(auth, 'POST', '/register', publico, sesion)).status, 403);
+  for (const sesion of [null, token()]) assert.equal((await request(auth, 'POST', '/register', {
+    ...publico, password: 'calmaluz', confirmacion: 'calmaluz',
+  }, sesion)).status, 403);
   assert.equal(hashes, 0); assert.equal(escrituras.length, 0);
 });
 test('registro público histórico conserva recepción inactiva y no recibe privilegios administrativos', async () => {
